@@ -9,7 +9,7 @@ import net.tomp2p.storage.Data;
 
 public class DHTWeb {
 
-	final private Peer peer;
+	static private Peer peer;
 
     public DHTWeb(int peerId) throws Exception {
         peer = new PeerMaker(Number160.createHash(peerId)).setPorts(4000 + peerId).makeAndListen();
@@ -27,6 +27,7 @@ public class DHTWeb {
         }
         if (args.length == 2) {
             System.out.println("Name:" + args[1] + " IP:" + dns.get(args[1]));
+            peer.shutdown();
         }
     }
 
