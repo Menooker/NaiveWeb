@@ -1,3 +1,3 @@
 cd /d bin
-java  -classpath ../TomP2P-4.4/lib/hamcrest-core-1.1.jar;../TomP2P-4.4/lib/jdbm-3.0-alpha.jar;../TomP2P-4.4/lib/json-simple-1.1.1.jar;../TomP2P-4.4/lib/junit-4.10.jar;../TomP2P-4.4/lib/logback-classic-1.0.1.jar;../TomP2P-4.4/lib/logback-core-1.0.1.jar;../TomP2P-4.4/lib/netty-3.5.3.Patched.jar;../TomP2P-4.4/lib/slf4j-api-1.6.4.jar;../TomP2P-4.4/TomP2P-4.4.jar;../TomP2P-4.4/TomP2P-4.4-javadoc.jar;../TomP2P-4.4/TomP2P-4.4-sources.jar;. com.DHTWeb.DHTWeb 1 test.me
+java  -classpath ../TomP2P-4.4/lib/hamcrest-core-1.1.jar;../TomP2P-4.4/lib/jdbm-3.0-alpha.jar;../TomP2P-4.4/lib/json-simple-1.1.1.jar;../TomP2P-4.4/lib/junit-4.10.jar;../TomP2P-4.4/lib/logback-classic-1.0.1.jar;../TomP2P-4.4/lib/logback-core-1.0.1.jar;../TomP2P-4.4/lib/netty-3.5.3.Patched.jar;../TomP2P-4.4/lib/slf4j-api-1.6.4.jar;../TomP2P-4.4/TomP2P-4.4.jar;../TomP2P-4.4/TomP2P-4.4-javadoc.jar;../TomP2P-4.4/TomP2P-4.4-sources.jar;. com.DHTWeb.DHTWeb -c localhost 2 test.me
 pause 
