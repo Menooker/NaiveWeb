@@ -2,16 +2,22 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7"/>
-	<classpathentry kind="lib" path="./TomP2P-4.4/TomP2P-4.4.jar"/>
-	<classpathentry kind="lib" path="./TomP2P-4.4/TomP2P-4.4-javadoc.jar"/>
-	<classpathentry kind="lib" path="./TomP2P-4.4/TomP2P-4.4-sources.jar"/>
-	<classpathentry kind="lib" path="./TomP2P-4.4/lib/hamcrest-core-1.1.jar"/>
-	<classpathentry kind="lib" path="./TomP2P-4.4/lib/jdbm-3.0-alpha.jar"/>
-	<classpathentry kind="lib" path="./TomP2P-4.4/lib/json-simple-1.1.1.jar"/>
-	<classpathentry kind="lib" path="./TomP2P-4.4/lib/junit-4.10.jar"/>
-	<classpathentry kind="lib" path="./TomP2P-4.4/lib/logback-classic-1.0.1.jar"/>
-	<classpathentry kind="lib" path="./TomP2P-4.4/lib/logback-core-1.0.1.jar"/>
-	<classpathentry kind="lib" path="./TomP2P-4.4/lib/netty-3.5.3.Patched.jar"/>
-	<classpathentry kind="lib" path="./TomP2P-4.4/lib/slf4j-api-1.6.4.jar"/>
+	<classpathentry kind="lib" path="./tomp2p-all-5.0-Beta7/lib/tomp2p-all-5.0-Beta7.jar"/>
+	<classpathentry kind="lib" path="./tomp2p-all-5.0-Beta7/lib/gcm-server-1.0.2.jar"/>
+	<classpathentry kind="lib" path="./tomp2p-all-5.0-Beta7/lib/json-simple-1.1.jar"/>
+	<classpathentry kind="lib" path="./tomp2p-all-5.0-Beta7/lib/mapdb-1.0.6.jar"/>
+	<classpathentry kind="lib" path="./tomp2p-all-5.0-Beta7/lib/netty-buffer-4.0.25.Final.jar"/>
+	<classpathentry kind="lib" path="./tomp2p-all-5.0-Beta7/lib/netty-common-4.0.25.Final.jar"/>
+	<classpathentry kind="lib" path="./tomp2p-all-5.0-Beta7/lib/netty-transport-4.0.25.Final.jar"/>
+	<classpathentry kind="lib" path="./tomp2p-all-5.0-Beta7/lib/tomp2p-android-5.0-Beta7.jar"/>
+	<classpathentry kind="lib" path="./tomp2p-all-5.0-Beta7/lib/tomp2p-core-5.0-Beta7.jar"/>
+	<classpathentry kind="lib" path="./tomp2p-all-5.0-Beta7/lib/tomp2p-dht-5.0-Beta7.jar"/>
+	<classpathentry kind="lib" path="./tomp2p-all-5.0-Beta7/lib/tomp2p-nat-5.0-Beta7.jar"/>
+	<classpathentry kind="lib" path="./tomp2p-all-5.0-Beta7/lib/tomp2p-replication-5.0-Beta7.jar"/>
+	<classpathentry kind="lib" path="./tomp2p-all-5.0-Beta7/lib/tomp2p-storage-5.0-Beta7.jar"/>
+	<classpathentry kind="lib" path="./tomp2p-all-5.0-Beta7/lib/tomp2p-tracker-5.0-Beta7.jar"/>
+	<classpathentry kind="lib" path="./tomp2p-all-5.0-Beta7/lib/weupnp-0.1.2.jar"/>
+	<classpathentry kind="lib" path="./tomp2p-all-5.0-Beta7/lib/slf4j-api-1.7.5.jar"/>
+	<classpathentry kind="lib" path="./tomp2p-all-5.0-Beta7/log4j-1.2.17.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
