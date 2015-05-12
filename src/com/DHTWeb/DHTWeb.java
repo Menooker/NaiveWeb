@@ -54,21 +54,21 @@ public class DHTWeb {
 		
 		frn.awaitUninterruptibly();
 		if (fd.isSuccess()) {
-			System.out.println("found that my outside address is " + fd.peerAddress());
+			System.out.println("*** found that my outside address is " + fd.peerAddress());
 		} else {
-			System.out.println("dis failed " + fd.failedReason());
+			System.out.println("*** FD failed " + fd.failedReason());
 		}
 		
 		if (fn.isSuccess()) {
-			System.out.println("NAT success: " + fn.peerAddress());
+			System.out.println("*** NAT success: " + fn.peerAddress());
 		} else {
-			System.out.println("nat failed " + fn.failedReason());
+			System.out.println("*** Nat failed " + fn.failedReason());
 		}
 		
 		if (frn.isSuccess()) {
-			System.out.println("FutureRelay success");
+			System.out.println("*** FutureRelay success");
 		} else {
-			System.out.println("relay failed " + frn.failedReason());
+			System.out.println("*** Relay failed " + frn.failedReason());
 		}
 		
 		// Future Bootstrap - slave
