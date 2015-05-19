@@ -44,7 +44,7 @@ public class DHTWeb {
 	static private PeerDHT peer;
 	static Number160 peer2Owner ;
     public DHTWeb(int peerId) throws Exception {
-        KeyPairGenerator gen = KeyPairGenerator.getInstance( "RSA" );
+        KeyPairGenerator gen = KeyPairGenerator.getInstance( "DSA" );
         KeyPair pair1 = gen.generateKeyPair();
         peer2Owner=Utils.makeSHAHash( pair1.getPublic().getEncoded() );
         FileOutputStream out=new FileOutputStream("publickey");
@@ -80,10 +80,10 @@ public class DHTWeb {
         peer2Owner=Utils.makeSHAHash( buf ); 
         
     	KeyPairGenerator gen = KeyPairGenerator.getInstance( "DSA" );
-        if(isMaster)
+        if(!isMaster)
         {
         	KeyPair pair1 = gen.generateKeyPair();
-        	peer= new PeerBuilderDHT(new PeerBuilder(pair1).ports(4000+peerId).behindFirewall().start()).start();
+        	peer= new PeerBuilderDHT(new PeerBuilder(pair1).ports(4000+rnd.nextInt()%10000).behindFirewall().start()).start();
         }
         else
         {
@@ -95,13 +95,13 @@ public class DHTWeb {
    
         	KeyFactory keyFactory = KeyFactory.getInstance("DSA");
         	X509EncodedKeySpec pubKeySpec = new X509EncodedKeySpec(buf);
-        	PublicKey pubKey = keyFactory.generatePublic(pubKeySpec);
+        	PublicKey pubKey = gen.generateKeyPair().getPublic();//keyFactory.generatePublic(pubKeySpec);
         	
         	PKCS8EncodedKeySpec keyspec=new PKCS8EncodedKeySpec(encodedprivateKey);
         	PrivateKey priKey = keyFactory.generatePrivate(keyspec);
         	
         	KeyPair pair1=new KeyPair(pubKey,priKey);
-        	peer= new PeerBuilderDHT(new PeerBuilder(pair1).ports(4000+peerId).behindFirewall().start()).start();
+        	peer= new PeerBuilderDHT(new PeerBuilder(pair1).ports(4000+rnd.nextInt()%10000).behindFirewall().start()).start();
             
         }
         peer.storageLayer().protection(  ProtectionEnable.ALL, ProtectionMode.MASTER_PUBLIC_KEY , ProtectionEnable.ALL,
@@ -149,34 +149,30 @@ public class DHTWeb {
     }
     public static void main(String[] args) throws NumberFormatException, Exception {
     	DHTWeb dns;
-        if (args[0].equals("-s")) { //-s id name ip key
-        	dns= new DHTWeb(Integer.parseInt(args[1]));
-            dns.store(args[2], args[3]);
+        if (args[0].equals("-s")) { //-s name ip key
+        	dns= new DHTWeb(0);
+            dns.store(args[1], args[2]);
 
     		for (;;) {
     			System.out.println("Ser--------\n");
     			for (PeerAddress pa : peer.peerBean().peerMap().all()) {
     					System.out.println("peer online (TCP):" + pa);
     			}
-                System.out.println("Name:" + args[2] + " IP:" + dns.get(args[2]));		
+                System.out.println("Name:" + args[1] + " IP:" + dns.get(args[1]));		
     			Thread.sleep(2000);
     		}
         }
         if (args[0].equals("-c")) {
-        	dns= new DHTWeb(args[1],Integer.parseInt(args[2]),false);
-            System.out.println("Name:" + args[3] + " IP:" + dns.get(args[3]));
+        	dns= new DHTWeb(args[1],0,false);
+            System.out.println("Name:" + args[2] + " IP:" + dns.get(args[2]));
             //peer.shutdown();
         }
-        if(args[0].equals("-w")) //-w host id name ip key
+        if(args[0].equals("-w")) //-w host name ip key
         {
-        	//KeyPairGenerator gen = KeyPairGenerator.getInstance( "DSA" );
-        	//KeyPair pair1 = gen.generateKeyPair();
-        	//peer2Owner = Utils.makeSHAHash( pair1.getPublic().getEncoded() );
-        	
-        	dns= new DHTWeb(args[1],Integer.parseInt(args[2]),true);
-        	System.out.println("Name:" + args[3] + " IP:" + dns.get(args[3]));
-        	dns.store(args[3], args[4]);
-            System.out.println("Name:" + args[3] + " IP:" + dns.get(args[3]));
+        	dns= new DHTWeb(args[1],0,true);
+        	System.out.println("Name:" + args[2] + " IP:" + dns.get(args[2]));
+        	dns.store(args[2], args[3]);
+            System.out.println("Name:" + args[2] + " IP:" + dns.get(args[2]));
         }
     }
 
