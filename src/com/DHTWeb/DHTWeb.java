@@ -116,7 +116,7 @@ public class DHTWeb {
 		PeerAddress pa = new PeerAddress(Number160.ZERO, address, masterPort, masterPort);
 
 		System.out.println("PeerAddress: " + pa);
-		
+/*		
 		PeerNAT peerNAT = new PeerBuilderNAT(peer.peer()).start();
 		FutureDiscover fd = peer.peer().discover().peerAddress(pa).start();
 		FutureNAT fn = peerNAT.startSetupPortforwarding(fd);
@@ -143,7 +143,26 @@ public class DHTWeb {
 		
 		// Future Bootstrap - slave
 		FutureBootstrap futureBootstrap = peer.peer().bootstrap().inetAddress(address).ports(masterPort).start();
-		futureBootstrap.awaitUninterruptibly();
+		futureBootstrap.awaitUninterruptibly();*/
+		
+		FutureDiscover fd = peer.peer().discover().peerAddress(pa).start();
+		System.out.println("About to wait...");
+		fd.awaitUninterruptibly();
+		if (fd.isSuccess()) {
+			System.out.println("*** FOUND THAT MY OUTSIDE ADDRESS IS " + fd.peerAddress());
+		} else {
+			System.out.println("*** FAILED " + fd.failedReason());
+		}
+
+		pa = fd.reporter();
+		FutureBootstrap bootstrap = peer.peer().bootstrap().peerAddress(pa).start();
+		bootstrap.awaitUninterruptibly();
+		if (!bootstrap.isSuccess()) {
+			System.out.println("*** COULD NOT BOOTSTRAP!");
+		} else {
+			System.out.println("*** SUCCESSFUL BOOTSTRAP");
+		}
+
 		
 		
     }
