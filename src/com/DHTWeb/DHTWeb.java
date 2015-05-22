@@ -37,6 +37,7 @@ import net.tomp2p.nat.PeerNAT;
 import net.tomp2p.p2p.Peer;
 import net.tomp2p.p2p.PeerBuilder;
 import net.tomp2p.peers.Number160;
+import net.tomp2p.peers.Number640;
 import net.tomp2p.peers.PeerAddress;
 import net.tomp2p.relay.tcp.TCPRelayClientConfig;
 import net.tomp2p.storage.Data;
@@ -180,7 +181,9 @@ public class DHTWeb {
         if (args[0].equals("-s")) { //-s name ip key
         	dns= new DHTWeb(0);
             dns.store(args[1], args[2]);
-
+            dns.store("kkkk","1",Number160.createHash(1));
+            dns.store("kkkk","2",Number160.createHash(2));
+            dns.getall("kkkk");
     		for (;;) {
     			System.out.println("Ser--------");
     			for (PeerAddress pa : peer.peerBean().peerMap().all()) {
@@ -204,6 +207,31 @@ public class DHTWeb {
         }
     }
 
+    private void store(String name, String ip,Number160 ck) throws IOException {//.protectDomain()
+    	FuturePut p;
+
+		p = peer.put(Number160.createHash(name)).data(ck,(new Data(ip).protectEntry(key))).sign().keyPair(key).domainKey(Number160.ZERO).start();
+	    p.awaitUninterruptibly();
+	    if(!p.isSuccess())
+	    {
+	    	System.out.println(p.failedReason());
+	    }
+    }
+	private String getall(String name) throws ClassNotFoundException, IOException {
+		FutureGet futureGet = peer.get(Number160.createHash(name)).domainKey(Number160.ZERO).all().start();
+		futureGet.awaitUninterruptibly();
+		if (futureGet.isSuccess()) {
+			Number640 k=new Number640(Number160.createHash(name),Number160.ZERO,Number160.createHash(1),Number160.ZERO);
+			System.out.println(futureGet.dataMap().values().size());
+			System.out.println((String)futureGet.dataMap()
+					.get(k)
+					.object());
+			//System.out.println((String)get(Number160.createHash(1)).object());;
+			//return (String)futureGet.data().object();
+		}
+		return "not found";
+	}   
+    
 	private String get(String name) throws ClassNotFoundException, IOException {
 		FutureGet futureGet = peer.get(Number160.createHash(name)).domainKey(Number160.ZERO).contentKey(Number160.ONE).start();
 		futureGet.awaitUninterruptibly();
