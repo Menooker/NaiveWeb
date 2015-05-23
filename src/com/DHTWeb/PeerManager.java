@@ -30,6 +30,7 @@ import net.tomp2p.nat.FutureNAT;
 import net.tomp2p.nat.FutureRelayNAT;
 import net.tomp2p.nat.PeerBuilderNAT;
 import net.tomp2p.nat.PeerNAT;
+import net.tomp2p.p2p.Peer;
 import net.tomp2p.p2p.PeerBuilder;
 import net.tomp2p.peers.Number160;
 import net.tomp2p.peers.Number640;
@@ -44,8 +45,8 @@ public class PeerManager {
 	final Random rnd = new Random( 42L );
 	static final ProtectionEnable PROTECT=ProtectionEnable.ALL;
 	static final ProtectionMode PROTECTMODE=ProtectionMode.MASTER_PUBLIC_KEY;
-	static final Number160 ROOT=Number160.createHash(10086);
-	static final Number160 DIR_MAGIC=Number160.ONE;	
+	public static final Number160 ROOT=Number160.createHash(10086);
+	public static final Number160 DIR_MAGIC=Number160.ONE;	
 	
 	private PeerDHT peer;
 	KeyPair mKey;
@@ -77,7 +78,7 @@ public class PeerManager {
 		}
 	}
 	
-	static void WriteKey(KeyPair k,String name) throws IOException {
+	public static void WriteKey(KeyPair k,String name) throws IOException {
 		FileOutputStream out;
 
 		out = new FileOutputStream(name+"publickey");
@@ -93,8 +94,17 @@ public class PeerManager {
 		out.close();
 
 	}
-
-	static KeyPair ReadKey(String name) throws Exception {
+	
+	public KeyPair getMasterKey()
+	{
+		return mKey;
+	}
+	public KeyPair getRootKey()
+	{
+		return rKey;
+	}	
+	
+	public static KeyPair ReadKey(String name) throws Exception {
 		FileInputStream out;
 
 		out = new FileInputStream(name+"publickey");
@@ -125,7 +135,6 @@ public class PeerManager {
     	isRootNode=true;
         KeyPairGenerator gen = KeyPairGenerator.getInstance( "DSA" );
         KeyPair pair1 = gen.generateKeyPair();
-        WriteKey(pair1,"master");
         mKey=pair1;
  
         rKey = gen.generateKeyPair();
@@ -150,39 +159,13 @@ public class PeerManager {
     public PeerManager(String host,KeyPair masterKey,KeyPair rootKey) throws Exception {
     	initPeerManager(host,masterKey,rootKey);
     }   
-        
-    
-    private void initPeerManager(String host,KeyPair masterKey,KeyPair rootKey) throws Exception {
-    	
-        isMasterNode= (masterKey!=null);
-        isRootNode= (rootKey!=null);
-        mKey=masterKey;
-        
-    	KeyPairGenerator gen = KeyPairGenerator.getInstance( "DSA" );
-        if(!isMasterNode)
-        {
-        	KeyPair pair1 = gen.generateKeyPair();
-        	peer= new PeerBuilderDHT(new PeerBuilder(pair1).ports(4000+rnd.nextInt()%10000).behindFirewall().start()).start();
-        }
-        else
-        {
-        	KeyPair pair1=gen.generateKeyPair();
-        	peer= new PeerBuilderDHT(new PeerBuilder(pair1).ports(4000+rnd.nextInt()%10000).behindFirewall().start()).start();
-            
-        }
-        peer.storageLayer().protection(  PROTECT, PROTECTMODE , PROTECT,
-    			PROTECTMODE  );
-
-    	
-    	//System.out.println("Client started and Listening to: " + DiscoverNetworks.discoverInterfaces(b));
-		System.out.println("address visible to outside is " + peer.peerAddress());
-
-		InetAddress address = Inet4Address.getByName(host);
-		int masterPort = 4000;
-		PeerAddress pa = new PeerAddress(Number160.ZERO, address, masterPort, masterPort);
-
-		System.out.println("PeerAddress: " + pa);
-		
+    public PeerDHT peer()
+    {
+    	return peer;
+    }
+   
+    void bootstrap1(PeerAddress pa)
+    {
 		PeerNAT peerNAT = new PeerBuilderNAT(peer.peer()).start();
 		FutureDiscover fd = peer.peer().discover().peerAddress(pa).start();
 		FutureNAT fn = peerNAT.startSetupPortforwarding(fd);
@@ -208,10 +191,13 @@ public class PeerManager {
 		}
 		
 		// Future Bootstrap - slave
-		FutureBootstrap futureBootstrap = peer.peer().bootstrap().inetAddress(address).ports(masterPort).start();
+		FutureBootstrap futureBootstrap = peer.peer().bootstrap().peerAddress(pa).start();
 		futureBootstrap.awaitUninterruptibly();
-		
-/*		FutureDiscover fd = peer.peer().discover().peerAddress(pa).start();
+    }
+    
+    void bootstrap2(PeerAddress pa)
+    {
+    	FutureDiscover fd = peer.peer().discover().peerAddress(pa).start();
 		System.out.println("About to wait...");
 		fd.awaitUninterruptibly();
 		if (fd.isSuccess()) {
@@ -227,12 +213,45 @@ public class PeerManager {
 			System.out.println("*** COULD NOT BOOTSTRAP!");
 		} else {
 			System.out.println("*** SUCCESSFUL BOOTSTRAP");
-		}*/
-
-		
-		
+		}
     }
     
+    private void initPeerManager(String host,KeyPair masterKey,KeyPair rootKey) throws Exception {
+    	
+        isMasterNode= (masterKey!=null);
+        isRootNode= (rootKey!=null);
+        mKey=masterKey;
+        
+    	KeyPairGenerator gen = KeyPairGenerator.getInstance( "DSA" );
+
+       	KeyPair pair1 = gen.generateKeyPair();
+       	peer= new PeerBuilderDHT(new PeerBuilder(pair1).ports(4000+rnd.nextInt()%10000).behindFirewall().start()).start();
+
+       
+        peer.storageLayer().protection(  PROTECT, PROTECTMODE , PROTECT,
+    			PROTECTMODE  );
+    	//System.out.println("Client started and Listening to: " + DiscoverNetworks.discoverInterfaces(b));
+		System.out.println("address visible to outside is " + peer.peerAddress());
+
+		InetAddress address = Inet4Address.getByName(host);
+		int masterPort = 4000;
+		PeerAddress pa = new PeerAddress(Number160.ZERO, address, masterPort, masterPort);
+
+		System.out.println("PeerAddress: " + pa);
+		bootstrap2(pa);
+	
+    }
+    
+    
+    public boolean createdir(Number160 parent,String dirname,Number160 dir)throws IOException,NotMasterNodeException
+    {
+    	return createdir(parent,Number160.createHash(dirname),dir);
+    }
+
+    public boolean createrootdir(String dirname,Number160 dir)throws IOException,NotMasterNodeException
+    {
+    	return createrootdir(Number160.createHash(dirname),dir);
+    }
     public boolean createdir(Number160 parent,Number160 dirname,Number160 dir)throws IOException,NotMasterNodeException
     {
     	return createdir(parent,dirname,dir,mKey);
@@ -252,25 +271,29 @@ public class PeerManager {
     	}
     	FuturePut p;
 
-		p = peer.put(parent).data(dirname,(new Data(dir).protectEntry(k))).sign().keyPair(k).domainKey(Number160.ZERO).start();
+		p = peer.put(parent).data(dirname,(new Data(dir).protectEntry(k))).sign().domainKey(Number160.ZERO).start();
 	    p.awaitUninterruptibly();
 	    if(!p.isSuccess())
 	    	return false;
-		p = peer.put(dir).data(Number160.ZERO,(new Data(DIR_MAGIC).protectEntry(k))).sign().keyPair(k).domainKey(Number160.ZERO).start();
+		p = peer.put(dir).data(Number160.ZERO,(new Data(DIR_MAGIC).protectEntry(k))).sign().domainKey(Number160.ZERO).start();
 	    p.awaitUninterruptibly();	  
 	    return p.isSuccess();
     }
     
-	public Number160 readdir(Number160 parent,Number160 dirname) throws ClassNotFoundException, IOException {
+    public Object getdir(Number160 parent,String dirname) throws ClassNotFoundException, IOException {
+    	return getdir(parent,Number160.createHash(dirname));
+    }
+    
+	public Object getdir(Number160 parent,Number160 dirname) throws ClassNotFoundException, IOException {
 		FutureGet futureGet = peer.get(parent).domainKey(Number160.ZERO).contentKey(dirname).start();
 		futureGet.awaitUninterruptibly();
 		if (futureGet.isSuccess()) {
-			return (Number160)futureGet.data().object();
+			return futureGet.data().object();
 		}
 		return null;
 	}
     
-    public DataMapReader getdir(Number160 parent)
+    public DataMapReader readdir(Number160 parent)
     {
 		FutureGet futureGet = peer.get(parent).domainKey(Number160.ZERO).all().start();
 		futureGet.awaitUninterruptibly();
@@ -278,6 +301,27 @@ public class PeerManager {
 			return new DataMapReader(parent,Number160.ZERO, futureGet.dataMap());
 		}
 		return null; 	
+    }
+    
+    public boolean putdir(Number160 parent,String dirname,Object d)throws IOException,NotMasterNodeException
+    {
+    	return putdir(parent,Number160.createHash(dirname),d);
+	}
+    
+    public boolean putdir(Number160 parent,Number160 dirname,Object d)throws IOException,NotMasterNodeException
+    {
+    	if(!isMasterNode)
+    	{
+    		NotMasterNodeException e=new NotMasterNodeException();
+    		throw e;
+    	}
+		FuturePut p = peer.put(parent).data(dirname,(new Data(d).protectEntry(mKey))).sign().domainKey(Number160.ZERO).start();
+	    p.awaitUninterruptibly();   
+	    return p.isSuccess();
+    }
+    
+    public Object get(String nm) throws ClassNotFoundException, IOException {
+    	return get(Number160.createHash(nm));
     }
     
 	public Object get(Number160 nm) throws ClassNotFoundException, IOException {
@@ -288,7 +332,12 @@ public class PeerManager {
 		}
 		return null;
 	}
-	public boolean store(Number160 name, String ip) throws IOException,NotMasterNodeException {//.protectDomain()
+	
+	public boolean store(String name, Object d) throws IOException,NotMasterNodeException {
+		return store(Number160.createHash(name),d);
+	}
+	
+	public boolean store(Number160 name, Object d) throws IOException,NotMasterNodeException {
     	if(!isMasterNode)
     	{
     		NotMasterNodeException e=new NotMasterNodeException();
@@ -296,7 +345,7 @@ public class PeerManager {
     	}
     	FuturePut p;
 
-		p = peer.put(name).data(Number160.ONE,(new Data(ip).protectEntry(mKey))).sign().keyPair(mKey).domainKey(Number160.ZERO).start();
+		p = peer.put(name).data(Number160.ONE,(new Data(d).protectEntry(mKey))).sign().domainKey(Number160.ZERO).start();
 	    p.awaitUninterruptibly();
 	    return p.isSuccess();
     }

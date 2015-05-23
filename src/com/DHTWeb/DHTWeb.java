@@ -1,8 +1,10 @@
 package com.DHTWeb;
 import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -17,6 +19,8 @@ import java.security.SignatureException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Collection;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Random;
 
 import net.tomp2p.connection.Bindings;
@@ -177,36 +181,114 @@ public class DHTWeb {
 		
     }
     public static void main(String[] args) throws NumberFormatException, Exception {
-    	DHTWeb dns;
+    	PeerManager pm = null;
+    	
         if (args[0].equals("-s")) { //-s name ip key
-        	dns= new DHTWeb(0);
-            dns.store(args[1], args[2]);
-            dns.store("kkkk","1",Number160.createHash(1));
-            dns.store("kkkk","2",Number160.createHash(2));
-            dns.getall("kkkk");
-    		for (;;) {
-    			System.out.println("Ser--------");
-    			for (PeerAddress pa : peer.peerBean().peerMap().all()) {
-    					System.out.println("peer online (TCP):" + pa);
-    			}
-                System.out.println("Name:" + args[1] + " IP:" + dns.get(args[1]));		
-    			Thread.sleep(2000);
-    		}
+        	pm=new PeerManager();
+        	PeerManager.WriteKey(pm.getMasterKey(), "master_");
+        	PeerManager.WriteKey(pm.getRootKey(), "root_");
+        	
+        	pm.store(args[1],args[2]);
+        	pm.createrootdir("data",Number160.createHash("DIR_DATA"));
+        	pm.createrootdir("img",Number160.createHash("DIR_IMG"));
         }
         if (args[0].equals("-c")) {
-        	dns= new DHTWeb(args[1],0,false);
-            System.out.println("Name:" + args[2] + " IP:" + dns.get(args[2]));
+        	pm=new PeerManager(args[1]);
+            System.out.println("Name:" + args[2] + " IP:" + pm.get(args[2]));
             //peer.shutdown();
         }
         if(args[0].equals("-w")) //-w host name ip key
         {
-        	dns= new DHTWeb(args[1],0,true);
-        	System.out.println("Name:" + args[2] + " IP:" + dns.get(args[2]));
-        	dns.store(args[2], args[3]);
-            System.out.println("Name:" + args[2] + " IP:" + dns.get(args[2]));
+        	pm=new PeerManager(args[1],PeerManager.ReadKey("master_"));
+        	System.out.println("Name:" + args[2] + " IP:" + (String)pm.get(args[2]));
+        	pm.store(args[2], args[3]);
+            System.out.println("Name:" + args[2] + " IP:" + (String)pm.get(args[2]));
         }
+        
+        while(pm!=null)
+        {
+        	String cmd=getLine();
+        	String[] argss=cmd.split(" ");
+        	if(cmd.equals("stat"))
+        	{
+        		System.out.println("Ser--------");
+    			for (PeerAddress pa : pm.peer().peerBean().peerMap().all()) {
+    					System.out.println("peer online (TCP):" + pa);
+    			}			
+        	}
+        	else if(argss[0].equals("mkdir"))
+        	{
+        		Number160 id=(Number160) pm.getdir(PeerManager.ROOT, argss[1]);
+        		for (int i=2;i<argss.length-1;i++)
+        		{
+        			id=(Number160)pm.getdir(id,argss[i]);
+        		}
+        		pm.createdir(id, argss[argss.length-1], Number160.createHash(argss[argss.length-1]));
+        	}
+        	else if(argss[0].equals("ls"))
+        	{
+        		Number160 id=(Number160) pm.getdir(PeerManager.ROOT, argss[1]);
+        		for (int i=2;i<argss.length;i++)
+        		{
+        			id=(Number160)pm.getdir(id,argss[i]);
+        		}
+        		for(Entry<Number640, Data> entry: pm.readdir(id).m.entrySet()){    
+        		     System.out.print(entry.getKey().contentKey()+"--->");    
+        		     if(entry.getValue().object().getClass()==String.class)
+        		     {
+        		    	 System.out.println((String)entry.getValue().object());
+        		     }
+        		     else if(entry.getValue().object().getClass()==Number160.class)
+        		     {
+        		    	 System.out.println((Number160)entry.getValue().object());
+        		     }
+        		     else 
+        		     {
+        		    	 System.out.println(entry.getValue().object());
+        		     }
+        		}   
+        		System.out.println();
+        	}
+        	else if(argss[0].equals("put"))
+        	{
+        		Number160 id=(Number160) pm.getdir(PeerManager.ROOT, argss[1]);
+        		for (int i=2;i<argss.length-2;i++)
+        		{
+        			id=(Number160)pm.getdir(id,argss[i]);
+        		}
+        		pm.putdir(id, argss[argss.length-2], argss[argss.length-1]) ;
+        	}
+        	else if(argss[0].equals("get"))
+        	{
+        		Number160 id=(Number160) pm.getdir(PeerManager.ROOT, argss[1]);
+        		for (int i=2;i<argss.length-1;i++)
+        		{
+        			id=(Number160)pm.getdir(id,argss[i]);
+        		}
+        		System.out.println((String)pm.getdir(id, argss[argss.length-1])) ;
+        	}
+        	else if(argss[0].equals("exit"))
+        	{
+        		pm.peer().shutdown();
+        		break;
+        	}
+        }
+        
     }
-
+	static String getLine() {
+		System.out.print(">");
+		InputStreamReader converter = new InputStreamReader(System.in);
+		BufferedReader in = new BufferedReader(converter);
+		String inLine = "";
+		try {
+			inLine = in.readLine();
+		} catch (Exception e) {
+			System.err.println("Error reading input.");
+			e.printStackTrace();
+			System.exit(1);
+		}
+		return inLine;
+	}
     private void store(String name, String ip,Number160 ck) throws IOException {//.protectDomain()
     	FuturePut p;
 

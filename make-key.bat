@@ -1,5 +1,5 @@
 del publickey
-copy publickey-fake publickey
+copy publickey-fake master_publickey
 del privatekey
-copy privatekey-fake privatekey
+copy privatekey-fake master_privatekey
 
