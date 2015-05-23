@@ -20,6 +20,7 @@ import java.util.Random;
 import net.tomp2p.connection.DSASignatureFactory;
 import net.tomp2p.dht.FutureGet;
 import net.tomp2p.dht.FuturePut;
+import net.tomp2p.dht.FutureRemove;
 import net.tomp2p.dht.PeerBuilderDHT;
 import net.tomp2p.dht.PeerDHT;
 import net.tomp2p.dht.StorageLayer.ProtectionEnable;
@@ -271,11 +272,11 @@ public class PeerManager {
     	}
     	FuturePut p;
 
-		p = peer.put(parent).data(dirname,(new Data(dir).protectEntry(k))).sign().domainKey(Number160.ZERO).start();
+		p = peer.put(parent).data(dirname,(new Data(dir).protectEntry(k))).keyPair(k).sign().domainKey(Number160.ZERO).start();
 	    p.awaitUninterruptibly();
 	    if(!p.isSuccess())
 	    	return false;
-		p = peer.put(dir).data(Number160.ZERO,(new Data(DIR_MAGIC).protectEntry(k))).sign().domainKey(Number160.ZERO).start();
+		p = peer.put(dir).data(Number160.ZERO,(new Data(DIR_MAGIC).protectEntry(k))).keyPair(k).sign().domainKey(Number160.ZERO).start();
 	    p.awaitUninterruptibly();	  
 	    return p.isSuccess();
     }
@@ -315,10 +316,28 @@ public class PeerManager {
     		NotMasterNodeException e=new NotMasterNodeException();
     		throw e;
     	}
-		FuturePut p = peer.put(parent).data(dirname,(new Data(d).protectEntry(mKey))).sign().domainKey(Number160.ZERO).start();
+		FuturePut p = peer.put(parent).data(dirname,(new Data(d).protectEntry(mKey))).keyPair(mKey).sign().domainKey(Number160.ZERO).start();
 	    p.awaitUninterruptibly();   
 	    return p.isSuccess();
     }
+ 
+    public boolean deldirfile(Number160 dir,String filename)throws IOException,NotMasterNodeException
+    {
+    	return deldirfile(dir,Number160.createHash(filename));
+    }
+    public boolean deldirfile(Number160 dir,Number160 filename)throws IOException,NotMasterNodeException
+    {
+    	if(!isMasterNode)
+    	{
+    		NotMasterNodeException e=new NotMasterNodeException();
+    		throw e;
+    	}
+		FutureRemove p = peer.remove(dir).keyPair(mKey).contentKey(filename).sign().keyPair(mKey).domainKey(Number160.ZERO).start();
+	    p.awaitUninterruptibly();   
+	    return p.isSuccess();
+    }
+    
+    
     
     public Object get(String nm) throws ClassNotFoundException, IOException {
     	return get(Number160.createHash(nm));
@@ -337,6 +356,25 @@ public class PeerManager {
 		return store(Number160.createHash(name),d);
 	}
 	
+	public boolean remove(String name)throws IOException,NotMasterNodeException
+	{
+		return remove(Number160.createHash(name));
+	}
+	
+	public boolean remove(Number160 name)throws IOException,NotMasterNodeException
+	{
+    	if(!isMasterNode)
+    	{
+    		NotMasterNodeException e=new NotMasterNodeException();
+    		throw e;
+    	}
+    	FutureRemove p;
+
+		p = peer.remove(name).sign().keyPair(mKey).domainKey(Number160.ZERO).start();
+	    p.awaitUninterruptibly();
+	    return p.isSuccess(); 	
+	}
+	
 	public boolean store(Number160 name, Object d) throws IOException,NotMasterNodeException {
     	if(!isMasterNode)
     	{
@@ -345,7 +383,7 @@ public class PeerManager {
     	}
     	FuturePut p;
 
-		p = peer.put(name).data(Number160.ONE,(new Data(d).protectEntry(mKey))).sign().domainKey(Number160.ZERO).start();
+		p = peer.put(name).data(Number160.ONE,(new Data(d).protectEntry(mKey))).keyPair(mKey).sign().domainKey(Number160.ZERO).start();
 	    p.awaitUninterruptibly();
 	    return p.isSuccess();
     }

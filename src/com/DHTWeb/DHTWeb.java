@@ -209,6 +209,7 @@ public class DHTWeb {
         {
         	String cmd=getLine();
         	String[] argss=cmd.split(" ");
+        	String[] path;
         	if(cmd.equals("stat"))
         	{
         		System.out.println("Ser--------");
@@ -218,19 +219,21 @@ public class DHTWeb {
         	}
         	else if(argss[0].equals("mkdir"))
         	{
-        		Number160 id=(Number160) pm.getdir(PeerManager.ROOT, argss[1]);
-        		for (int i=2;i<argss.length-1;i++)
+        		path=argss[1].split("/");
+        		Number160 id=(Number160) pm.getdir(PeerManager.ROOT, path[0]);
+        		for (int i=1;i<path.length-1;i++)
         		{
-        			id=(Number160)pm.getdir(id,argss[i]);
+        			id=(Number160)pm.getdir(id,path[i]);
         		}
-        		pm.createdir(id, argss[argss.length-1], Number160.createHash(argss[argss.length-1]));
+        		pm.createdir(id, path[path.length-1], Number160.createHash(path[path.length-1]));
         	}
         	else if(argss[0].equals("ls"))
         	{
-        		Number160 id=(Number160) pm.getdir(PeerManager.ROOT, argss[1]);
-        		for (int i=2;i<argss.length;i++)
+        		path=argss[1].split("/");
+        		Number160 id=(Number160) pm.getdir(PeerManager.ROOT, path[0]);
+        		for (int i=1;i<path.length;i++)
         		{
-        			id=(Number160)pm.getdir(id,argss[i]);
+        			id=(Number160)pm.getdir(id,path[i]);
         		}
         		for(Entry<Number640, Data> entry: pm.readdir(id).m.entrySet()){    
         		     System.out.print(entry.getKey().contentKey()+"--->");    
@@ -247,25 +250,36 @@ public class DHTWeb {
         		    	 System.out.println(entry.getValue().object());
         		     }
         		}   
-        		System.out.println();
+        	}
+        	else if(argss[0].equals("del"))
+        	{
+        		path=argss[1].split("/");
+        		Number160 id=(Number160) pm.getdir(PeerManager.ROOT, path[0]);
+        		for (int i=1;i<path.length-1;i++)
+        		{
+        			id=(Number160)pm.getdir(id,path[i]);
+        		}
+        		pm.deldirfile(id, path[path.length-1]);
         	}
         	else if(argss[0].equals("put"))
         	{
-        		Number160 id=(Number160) pm.getdir(PeerManager.ROOT, argss[1]);
-        		for (int i=2;i<argss.length-2;i++)
+        		path=argss[1].split("/");
+        		Number160 id=(Number160) pm.getdir(PeerManager.ROOT, path[0]);
+        		for (int i=1;i<path.length-1;i++)
         		{
-        			id=(Number160)pm.getdir(id,argss[i]);
+        			id=(Number160)pm.getdir(id,path[i]);
         		}
-        		pm.putdir(id, argss[argss.length-2], argss[argss.length-1]) ;
+        		pm.putdir(id, path[path.length-1], argss[2]) ;
         	}
         	else if(argss[0].equals("get"))
         	{
-        		Number160 id=(Number160) pm.getdir(PeerManager.ROOT, argss[1]);
-        		for (int i=2;i<argss.length-1;i++)
+        		path=argss[1].split("/");
+        		Number160 id=(Number160) pm.getdir(PeerManager.ROOT, path[0]);
+        		for (int i=1;i<path.length-1;i++)
         		{
-        			id=(Number160)pm.getdir(id,argss[i]);
+        			id=(Number160)pm.getdir(id,path[i]);
         		}
-        		System.out.println((String)pm.getdir(id, argss[argss.length-1])) ;
+        		System.out.println((String)pm.getdir(id, path[path.length-1])) ;
         	}
         	else if(argss[0].equals("exit"))
         	{
