@@ -78,7 +78,13 @@ public class PeerManager {
 			m=map;
 		}
 	}
-	
+	/** 
+	 * Write the key pair to a file pair named name+"publickey" and name+"privatekey"
+	 @param k 
+	 The key
+	 @param name 
+	 The file name
+	*/ 	
 	public static void WriteKey(KeyPair k,String name) throws IOException {
 		FileOutputStream out;
 
@@ -105,6 +111,13 @@ public class PeerManager {
 		return rKey;
 	}	
 	
+	/**
+	 * Read the key pair from the file named name+"publickey"
+	 * @param name
+	 * The file name
+	 * @return
+	 * @throws Exception
+	 */
 	public static KeyPair ReadKey(String name) throws Exception {
 		FileInputStream out;
 
@@ -243,26 +256,81 @@ public class PeerManager {
 	
     }
     
-    
+    /**
+     * Create a directory in a non-root directory
+     * @param parent
+     * @param dirname
+     * Directory name in string, will be hashed into Number160
+     * @param dir
+     * The new directory's id
+     * @return
+     * @throws IOException
+     * @throws NotMasterNodeException
+     */
     public boolean createdir(Number160 parent,String dirname,Number160 dir)throws IOException,NotMasterNodeException
     {
     	return createdir(parent,Number160.createHash(dirname),dir);
     }
 
-    public boolean createrootdir(String dirname,Number160 dir)throws IOException,NotMasterNodeException
-    {
-    	return createrootdir(Number160.createHash(dirname),dir);
-    }
+    /**
+     * Create a directory in a non-root directory
+     * @param parent
+     * @param dirname
+     * Directory name in Number160
+     * @param dir
+     * The new directory's id
+     * @return
+     * @throws IOException
+     * @throws NotMasterNodeException
+     */
     public boolean createdir(Number160 parent,Number160 dirname,Number160 dir)throws IOException,NotMasterNodeException
     {
     	return createdir(parent,dirname,dir,mKey);
     }
+    
+    /**
+     * Create a directory in root directory
+     * @param dirname
+     * The new directory name 
+     * @param dir
+     * The new directory id
+     * @return
+     * @throws IOException
+     * @throws NotMasterNodeException
+     */
+    public boolean createrootdir(String dirname,Number160 dir)throws IOException,NotMasterNodeException
+    {
+    	return createrootdir(Number160.createHash(dirname),dir);
+    }
 
+
+    /**
+     * Create a directory in root directory
+     * @param dirname
+     * The new directory name in Number160
+     * @param dir
+     * The new directory id
+     * @return
+     * @throws IOException
+     * @throws NotMasterNodeException
+     */
     public boolean createrootdir(Number160 dirname,Number160 dir)throws IOException,NotMasterNodeException
     {
     	return createdir(ROOT,dirname,dir,rKey);
     }
     
+    /**
+     * Create a directory with a specified key
+     * @param parent
+     * @param dirname
+     * The new directory name
+     * @param dir
+     * @param k
+     * The key pair that protects the directory entry
+     * @return
+     * @throws IOException
+     * @throws NotMasterNodeException
+     */
     public boolean createdir(Number160 parent,Number160 dirname,Number160 dir,KeyPair k)throws IOException,NotMasterNodeException
     {
     	if(!isMasterNode)
@@ -281,12 +349,32 @@ public class PeerManager {
 	    return p.isSuccess();
     }
     
-    public Object getdir(Number160 parent,String dirname) throws ClassNotFoundException, IOException {
-    	return getdir(parent,Number160.createHash(dirname));
+    /**
+     * Get a specified content (a directory or an object) in a directory
+     * @param parent
+     * The directory
+     * @param name
+     * The content's name, will be hashed to Number160
+     * @return
+     * @throws ClassNotFoundException
+     * @throws IOException
+     */
+    public Object getdir(Number160 parent,String name) throws ClassNotFoundException, IOException {
+    	return getdir(parent,Number160.createHash(name));
     }
     
-	public Object getdir(Number160 parent,Number160 dirname) throws ClassNotFoundException, IOException {
-		FutureGet futureGet = peer.get(parent).domainKey(Number160.ZERO).contentKey(dirname).start();
+    /**
+     * Get a specified content (a directory or an object) in a directory
+     * @param parent
+     * The directory
+     * @param name
+     * The content's name
+     * @return
+     * @throws ClassNotFoundException
+     * @throws IOException
+     */
+	public Object getdir(Number160 parent,Number160 name) throws ClassNotFoundException, IOException {
+		FutureGet futureGet = peer.get(parent).domainKey(Number160.ZERO).contentKey(name).start();
 		futureGet.awaitUninterruptibly();
 		if (futureGet.isSuccess()) {
 			return futureGet.data().object();
@@ -294,6 +382,11 @@ public class PeerManager {
 		return null;
 	}
     
+	/**
+	 * Get all the contents of a directory into a map
+	 * @param parent
+	 * @return
+	 */
     public DataMapReader readdir(Number160 parent)
     {
 		FutureGet futureGet = peer.get(parent).domainKey(Number160.ZERO).all().start();
@@ -304,11 +397,33 @@ public class PeerManager {
 		return null; 	
     }
     
-    public boolean putdir(Number160 parent,String dirname,Object d)throws IOException,NotMasterNodeException
+    /**
+     * Put the content to the directory "parent" with entry name "name"
+     * @param parent
+     * @param name
+     * The entry's name, will be hashed to Number160
+     * @param d
+     * The object to be put
+     * @return
+     * @throws IOException
+     * @throws NotMasterNodeException
+     */
+    public boolean putdir(Number160 parent,String name,Object d)throws IOException,NotMasterNodeException
     {
-    	return putdir(parent,Number160.createHash(dirname),d);
+    	return putdir(parent,Number160.createHash(name),d);
 	}
-    
+ 
+    /**
+     * Put the content to the directory "parent" with entry name "name"
+     * @param parent
+     * @param name
+     * The entry's name
+     * @param d
+     * The object to be put
+     * @return
+     * @throws IOException
+     * @throws NotMasterNodeException
+     */
     public boolean putdir(Number160 parent,Number160 dirname,Object d)throws IOException,NotMasterNodeException
     {
     	if(!isMasterNode)
@@ -321,10 +436,32 @@ public class PeerManager {
 	    return p.isSuccess();
     }
  
+    
+    /**
+     * Delete an entry in the directory
+     * @param dir
+     * The directory's id
+     * @param filename
+     * The entry name to be deleted, will be hashed to Number160
+     * @return
+     * @throws IOException
+     * @throws NotMasterNodeException
+     */
     public boolean deldirfile(Number160 dir,String filename)throws IOException,NotMasterNodeException
     {
     	return deldirfile(dir,Number160.createHash(filename));
     }
+    
+    /**
+     * Delete an entry in the directory
+     * @param dir
+     * The directory's id
+     * @param filename
+     * The entry name to be deleted
+     * @return
+     * @throws IOException
+     * @throws NotMasterNodeException
+     */
     public boolean deldirfile(Number160 dir,Number160 filename)throws IOException,NotMasterNodeException
     {
     	if(!isMasterNode)
@@ -338,11 +475,26 @@ public class PeerManager {
     }
     
     
-    
+	/**
+	 * Get an object directly at index "name"
+	 * @param name
+	 * The index of the object, will be hashed into Number160
+	 * @return
+	 * @throws IOException
+	 * @throws NotMasterNodeException
+	 */	 
     public Object get(String nm) throws ClassNotFoundException, IOException {
     	return get(Number160.createHash(nm));
     }
     
+	/**
+	 * Get an object directly at index "name"
+	 * @param name
+	 * The index of the object
+	 * @return
+	 * @throws IOException
+	 * @throws NotMasterNodeException
+	 */	
 	public Object get(Number160 nm) throws ClassNotFoundException, IOException {
 		FutureGet futureGet = peer.get(nm).domainKey(Number160.ZERO).contentKey(Number160.ONE).start();
 		futureGet.awaitUninterruptibly();
@@ -351,16 +503,29 @@ public class PeerManager {
 		}
 		return null;
 	}
-	
-	public boolean store(String name, Object d) throws IOException,NotMasterNodeException {
-		return store(Number160.createHash(name),d);
-	}
-	
+
+	/**
+	 * Remove an object directly at index "name"
+	 * @param name
+	 * The index of the object, which will be hashed into Number160
+	 * @return
+	 * @throws IOException
+	 * @throws NotMasterNodeException
+	 */	
 	public boolean remove(String name)throws IOException,NotMasterNodeException
 	{
 		return remove(Number160.createHash(name));
 	}
+
 	
+	/**
+	 * Remove an object directly at index "name"
+	 * @param name
+	 * The index of the object
+	 * @return
+	 * @throws IOException
+	 * @throws NotMasterNodeException
+	 */	
 	public boolean remove(Number160 name)throws IOException,NotMasterNodeException
 	{
     	if(!isMasterNode)
@@ -375,6 +540,31 @@ public class PeerManager {
 	    return p.isSuccess(); 	
 	}
 	
+	/**
+	 * Store an object directly at index "name"
+	 * @param name
+	 * The index of the object, which will be hashed into Number160
+	 * @param d
+	 * The object to be stored
+	 * @return
+	 * @throws IOException
+	 * @throws NotMasterNodeException
+	 */	
+	public boolean store(String name, Object d) throws IOException,NotMasterNodeException {
+		return store(Number160.createHash(name),d);
+	}
+	
+	
+	/**
+	 * Store an object directly at index "name"
+	 * @param name
+	 * The index of the object
+	 * @param d
+	 * The object to be stored
+	 * @return
+	 * @throws IOException
+	 * @throws NotMasterNodeException
+	 */
 	public boolean store(Number160 name, Object d) throws IOException,NotMasterNodeException {
     	if(!isMasterNode)
     	{
