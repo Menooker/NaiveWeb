@@ -183,7 +183,7 @@ public class DHTWeb {
     public static void main(String[] args) throws NumberFormatException, Exception {
     	PeerManager pm = null;
     	
-        if (args[0].equals("-s")) { //-s name ip key
+        if (args[0].equals("-n")) { //-s name ip key
         	pm=new PeerManager();
         	PeerManager.WriteKey(pm.getMasterKey(), "master_");
         	PeerManager.WriteKey(pm.getRootKey(), "root_");
@@ -204,7 +204,11 @@ public class DHTWeb {
         	pm.store(args[2], args[3]);
             System.out.println("Name:" + args[2] + " IP:" + (String)pm.get(args[2]));
         }
-        
+        if(args[0].equals("-s"))
+        {
+        	pm=new PeerManager(PeerManager.ReadKey("master_"),
+        			PeerManager.ReadKey("root_"));     	
+        }
         while(pm!=null)
         {
         	String cmd=getLine();
@@ -226,6 +230,10 @@ public class DHTWeb {
         			id=(Number160)pm.getdir(id,path[i]);
         		}
         		pm.createdir(id, path[path.length-1], Number160.createHash(path[path.length-1]));
+        	}
+        	else if(argss[0].equals("mkrdir"))
+        	{
+        		pm.createrootdir(argss[1], Number160.createHash(argss[1]));
         	}
         	else if(argss[0].equals("ls"))
         	{

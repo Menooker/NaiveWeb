@@ -1,4 +1,5 @@
 package com.DHTWeb;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -39,7 +40,14 @@ import net.tomp2p.peers.PeerAddress;
 import net.tomp2p.relay.tcp.TCPRelayClientConfig;
 import net.tomp2p.storage.Data;
 import net.tomp2p.utils.Utils;
+import java.io.File;
 
+import org.mapdb.DBMaker;
+
+import net.tomp2p.connection.DSASignatureFactory;
+import net.tomp2p.peers.Number160;
+import net.tomp2p.storage.StorageDisk;
+import net.tomp2p.dht.Storage;
 
 public class PeerManager {
 	
@@ -49,6 +57,7 @@ public class PeerManager {
 	public static final Number160 ROOT=Number160.createHash(10086);
 	public static final Number160 DIR_MAGIC=Number160.ONE;	
 	
+	private File DIR;
 	private PeerDHT peer;
 	KeyPair mKey;
 	KeyPair rKey;
@@ -78,6 +87,25 @@ public class PeerManager {
 			m=map;
 		}
 	}
+	
+	
+	Storage make_storage(Number160 peerid)
+	{
+		File dir = new File("PeerStorage");
+		if(!dir.exists())
+			dir.mkdirs();
+		//File DIR=new File(dir,peerid.toString());
+		File DIR=new File("d:\\HHH");
+		if(!DIR.exists())
+			DIR.mkdirs();	
+		System.out.println(peerid);
+
+		return new PeerFileStorage(
+				DBMaker.newFileDB(new File(DIR, "DHTWeb")).cacheDisable().make(),
+				peerid,DIR,new net.tomp2p.connection.DSASignatureFactory(),60 * 1000);
+	}
+	
+	
 	/** 
 	 * Write the key pair to a file pair named name+"publickey" and name+"privatekey"
 	 @param k 
@@ -144,6 +172,30 @@ public class PeerManager {
 		return mykey;
 
 	}
+	
+    public PeerManager(KeyPair mkey,KeyPair rkey) throws Exception {
+    	isMasterNode=true;
+    	isRootNode=true;
+       
+        mKey = mkey;
+ 
+        rKey = rkey;
+        
+        Number160 peer2Owner = Utils.makeSHAHash( mKey.getPublic().getEncoded() );
+        System.out.println("Root Mode");
+    	peer = new PeerBuilderDHT(new PeerBuilder(mKey).ports(4000 ).start()).storage(make_storage(peer2Owner)).start();
+    	peer.storageLayer().protection(  PROTECT, PROTECTMODE , PROTECT,
+    			PROTECTMODE  );
+    	System.out.println("My public key is "+peer2Owner);
+    	System.out.println("My public peerID is "+peer.peerID());
+        FutureBootstrap fb = peer.peer().bootstrap().inetAddress(InetAddress.getByName("127.0.0.1")).ports(4000).start();
+        fb.awaitUninterruptibly();
+        if (fb.isSuccess()) {
+            peer.peer().discover().peerAddress(fb.bootstrapTo().iterator().next()).start().awaitUninterruptibly();
+        }
+
+    }
+	
     public PeerManager() throws Exception {
     	isMasterNode=true;
     	isRootNode=true;
@@ -152,11 +204,13 @@ public class PeerManager {
         mKey=pair1;
  
         rKey = gen.generateKeyPair();
-        WriteKey(rKey,"root");
         
-    	peer = new PeerBuilderDHT(new PeerBuilder(pair1).ports(4000 ).start()).start();
+        Number160 peer2Owner = Utils.makeSHAHash( pair1.getPublic().getEncoded() );
+    	peer = new PeerBuilderDHT(new PeerBuilder(pair1).ports(4000 ).start()).storage(make_storage(peer2Owner)).start();
     	peer.storageLayer().protection(  PROTECT, PROTECTMODE , PROTECT,
     			PROTECTMODE  );
+    	System.out.println("My public key is "+peer2Owner);
+    	System.out.println("My public peerID is "+peer.peerID());
         FutureBootstrap fb = peer.peer().bootstrap().inetAddress(InetAddress.getByName("127.0.0.1")).ports(4000).start();
         fb.awaitUninterruptibly();
         if (fb.isSuccess()) {
@@ -239,9 +293,15 @@ public class PeerManager {
     	KeyPairGenerator gen = KeyPairGenerator.getInstance( "DSA" );
 
        	KeyPair pair1 = gen.generateKeyPair();
-       	peer= new PeerBuilderDHT(new PeerBuilder(pair1).ports(4000+rnd.nextInt()%10000).behindFirewall().start()).start();
-
-       
+       	Number160 peer2Owner = Utils.makeSHAHash( pair1.getPublic().getEncoded() );
+       	PeerBuilderDHT builder= new PeerBuilderDHT(new PeerBuilder(pair1).ports(4000+rnd.nextInt()%10000).behindFirewall().start());
+       	if(isMasterNode)
+       	{
+       		builder.storage(make_storage(peer2Owner));
+       	}
+       	peer=builder.start();
+    	System.out.println("My public key is "+peer2Owner);
+    	System.out.println("My public peerID is "+peer.peerID());
         peer.storageLayer().protection(  PROTECT, PROTECTMODE , PROTECT,
     			PROTECTMODE  );
     	//System.out.println("Client started and Listening to: " + DiscoverNetworks.discoverInterfaces(b));
