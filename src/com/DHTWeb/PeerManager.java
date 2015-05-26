@@ -94,14 +94,13 @@ public class PeerManager {
 		File dir = new File("PeerStorage");
 		if(!dir.exists())
 			dir.mkdirs();
-		//File DIR=new File(dir,peerid.toString());
-		File DIR=new File("d:\\HHH");
+		File DIR=new File(dir,peerid.toString());
 		if(!DIR.exists())
 			DIR.mkdirs();	
 		System.out.println(peerid);
 
 		return new PeerFileStorage(
-				DBMaker.newFileDB(new File(DIR, "DHTWeb")).cacheDisable().make(),
+				DBMaker.newFileDB(new File(DIR, "DHTWeb")).closeOnJvmShutdown().make(),
 				peerid,DIR,new net.tomp2p.connection.DSASignatureFactory(),60 * 1000);
 	}
 	

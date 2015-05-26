@@ -51,26 +51,26 @@ public class ShitSerializer implements Serializer<Data>, Serializable {
 	}
 
 	private void serializeMapDB(DataOutput out, Data value) throws IOException {
-		try {
+		/*try {
 			System.out.println("Shit :"+value.object().getClass());
 			System.out.println("Shit :"+ ((value.object().getClass()==String.class) ? (String)value.object():value.object()));
 		} catch (ClassNotFoundException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
-		}
+		}*/
 	    AlternativeCompositeByteBuf acb = AlternativeCompositeByteBuf.compBuffer(AlternativeCompositeByteBuf.UNPOOLED_HEAP);
 	    // store data to disk
 	    // header first
 	    value.encodeHeader(acb, signatureFactory);
-	    System.out.println("Shit head:"+write(out, acb.nioBuffers()));
+	    write(out, acb.nioBuffers());
 	    acb.skipBytes(acb.writerIndex());
 	    // next data - no need to copy to another buffer, just take the data
 	    // from memory
-	    System.out.println("Shit value:"+write(out, value.toByteBuffers()));
+	    write(out, value.toByteBuffers());
 	    // rest
 	    try {
 	    	value.encodeDone(acb, signatureFactory);
-	    	System.out.println("Shit done:"+write(out, acb.nioBuffers()));
+	    	write(out, acb.nioBuffers());
 	    } catch (InvalidKeyException e) {
 	    	throw new IOException(e);
 	    } catch (SignatureException e) {
@@ -148,7 +148,6 @@ public class ShitSerializer implements Serializer<Data>, Serializable {
     }
 
 	private Data deserializeMapDB(DataInput in) throws IOException {
-		System.out.println("Fuck");
 	    ByteBuf buf = Unpooled.buffer();
 	    Data data = null;
 	    int hsz=0;
@@ -157,9 +156,7 @@ public class ShitSerializer implements Serializer<Data>, Serializable {
 	    	buf.writeByte(in.readByte());
 	    	data = Data.decodeHeader(buf, signatureFactory);
 	    }
-	    System.out.println("Head:"+hsz);
 	    int len = data.length();
-	    System.out.println("Head:"+len);
 	    byte me[] = new byte[len];
 	    in.readFully(me);
 	    buf = Unpooled.wrappedBuffer(me);
