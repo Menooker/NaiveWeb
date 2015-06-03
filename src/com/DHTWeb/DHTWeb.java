@@ -1,13 +1,17 @@
 package com.DHTWeb;
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
 import java.security.KeyPair;
@@ -181,8 +185,8 @@ public class DHTWeb {
 		
     }
     public static void main(String[] args) throws NumberFormatException, Exception {
-    	PeerManager pm = null;
     	
+    	PeerManager pm = null;
         if (args[0].equals("-n")) { //-s name ip key
         	pm=new PeerManager();
         	PeerManager.WriteKey(pm.getMasterKey(), "master_");
@@ -209,93 +213,143 @@ public class DHTWeb {
         	pm=new PeerManager(PeerManager.ReadKey("master_"),
         			PeerManager.ReadKey("root_"));     	
         }
+        pm.putdir(getid("data/testhtml",pm), "testhtml", "<html><body><h1>Hello World</h1><br>This is our DHTWeb homepage<br><img src=../data/testjpeg /></body></html>") ;
+        InputStream fis = null;  
+        fis = new FileInputStream(new File("C:/Users/sony/Desktop/WebServer/LHDN.jpeg"));  
+        byte[] buff = new byte[fis.available()];  
+        fis.read(buff);
+        pm.putdir(getid("data/testjpeg",pm), "testjpeg", buff) ;
+        fis.close();
+        
+        for(Entry<Number640, Data> entry: pm.readdir(getid("data/testjpeg",pm)).m.entrySet()){    
+		     System.out.print(entry.getKey().contentKey()+"--->");    
+		     if(entry.getValue().object().getClass()==String.class)
+		     {
+		    	 System.out.println((String)entry.getValue().object());
+		     }
+		     else if(entry.getValue().object().getClass()==Number160.class)
+		     {
+		    	 System.out.println((Number160)entry.getValue().object());
+		     }
+		     else 
+		     {
+		    	 System.out.println(entry.getValue().object());
+		     }
+		} 
+        
+        
         while(pm!=null)
         {
-        	String cmd=getLine();
-        	String[] argss=cmd.split(" ");
-        	String[] path;
-        	if(cmd.equals("stat"))
-        	{
-        		System.out.println("Ser--------");
-    			for (PeerAddress pa : pm.peer().peerBean().peerMap().all()) {
-    					System.out.println("peer online (TCP):" + pa);
-    			}			
-        	}
-        	else if(argss[0].equals("mkdir"))
-        	{
-        		path=argss[1].split("/");
-        		Number160 id=(Number160) pm.getdir(PeerManager.ROOT, path[0]);
-        		for (int i=1;i<path.length-1;i++)
-        		{
-        			id=(Number160)pm.getdir(id,path[i]);
-        		}
-        		pm.createdir(id, path[path.length-1], Number160.createHash(path[path.length-1]));
-        	}
-        	else if(argss[0].equals("mkrdir"))
-        	{
-        		pm.createrootdir(argss[1], Number160.createHash(argss[1]));
-        	}
-        	else if(argss[0].equals("ls"))
-        	{
-        		path=argss[1].split("/");
-        		Number160 id=(Number160) pm.getdir(PeerManager.ROOT, path[0]);
-        		for (int i=1;i<path.length;i++)
-        		{
-        			id=(Number160)pm.getdir(id,path[i]);
-        		}
-        		for(Entry<Number640, Data> entry: pm.readdir(id).m.entrySet()){    
-        		     System.out.print(entry.getKey().contentKey()+"--->");    
-        		     if(entry.getValue().object().getClass()==String.class)
-        		     {
-        		    	 System.out.println((String)entry.getValue().object());
-        		     }
-        		     else if(entry.getValue().object().getClass()==Number160.class)
-        		     {
-        		    	 System.out.println((Number160)entry.getValue().object());
-        		     }
-        		     else 
-        		     {
-        		    	 System.out.println(entry.getValue().object());
-        		     }
-        		}   
-        	}
-        	else if(argss[0].equals("del"))
-        	{
-        		path=argss[1].split("/");
-        		Number160 id=(Number160) pm.getdir(PeerManager.ROOT, path[0]);
-        		for (int i=1;i<path.length-1;i++)
-        		{
-        			id=(Number160)pm.getdir(id,path[i]);
-        		}
-        		pm.deldirfile(id, path[path.length-1]);
-        	}
-        	else if(argss[0].equals("put"))
-        	{
-        		path=argss[1].split("/");
-        		Number160 id=(Number160) pm.getdir(PeerManager.ROOT, path[0]);
-        		for (int i=1;i<path.length-1;i++)
-        		{
-        			id=(Number160)pm.getdir(id,path[i]);
-        		}
-        		pm.putdir(id, path[path.length-1], argss[2]) ;
-        	}
-        	else if(argss[0].equals("get"))
-        	{
-        		path=argss[1].split("/");
-        		Number160 id=(Number160) pm.getdir(PeerManager.ROOT, path[0]);
-        		for (int i=1;i<path.length-1;i++)
-        		{
-        			id=(Number160)pm.getdir(id,path[i]);
-        		}
-        		System.out.println((String)pm.getdir(id, path[path.length-1])) ;
-        	}
-        	else if(argss[0].equals("exit"))
-        	{
-        		pm.peer().shutdown();
-        		break;
-        	}
+        	int port = 6789;
+    		// Establish the listen socket.
+    		ServerSocket welcomeSocket = new ServerSocket(port);
+    		// Process HTTP service requests in an infinite loop.
+    		while (true) {
+    			// Listen for a TCP connection request.
+    			Socket connectionSocket = welcomeSocket.accept();
+    			// Listen for a TCP connection request.
+    			HttpRequest request = new HttpRequest(connectionSocket,pm);
+    			// Create a new thread to process the request.
+    			Thread thread = new Thread(request);
+    			// Start the thread.
+    			thread.start();
+    		}
+
+//        	String cmd=getLine();
+//        	String[] argss=cmd.split(" ");
+//        	String[] path;
+//        	if(cmd.equals("stat"))
+//        	{
+//        		System.out.println("Ser--------");
+//    			for (PeerAddress pa : pm.peer().peerBean().peerMap().all()) {
+//    					System.out.println("peer online (TCP):" + pa);
+//    			}			
+//        	}
+//        	else if(argss[0].equals("mkdir"))
+//        	{
+//        		path=argss[1].split("/");
+//        		Number160 id=(Number160) pm.getdir(PeerManager.ROOT, path[0]);
+//        		for (int i=1;i<path.length-1;i++)
+//        		{
+//        			id=(Number160)pm.getdir(id,path[i]);
+//        		}
+//        		pm.createdir(id, path[path.length-1], Number160.createHash(path[path.length-1]));
+//        	}
+//        	else if(argss[0].equals("mkrdir"))
+//        	{
+//        		pm.createrootdir(argss[1], Number160.createHash(argss[1]));
+//        	}
+//        	else if(argss[0].equals("ls"))
+//        	{
+//        		path=argss[1].split("/");
+//        		Number160 id=(Number160) pm.getdir(PeerManager.ROOT, path[0]);
+//        		for (int i=1;i<path.length;i++)
+//        		{
+//        			id=(Number160)pm.getdir(id,path[i]);
+//        		}
+//        		for(Entry<Number640, Data> entry: pm.readdir(id).m.entrySet()){    
+//        		     System.out.print(entry.getKey().contentKey()+"--->");    
+//        		     if(entry.getValue().object().getClass()==String.class)
+//        		     {
+//        		    	 System.out.println((String)entry.getValue().object());
+//        		     }
+//        		     else if(entry.getValue().object().getClass()==Number160.class)
+//        		     {
+//        		    	 System.out.println((Number160)entry.getValue().object());
+//        		     }
+//        		     else 
+//        		     {
+//        		    	 System.out.println(entry.getValue().object());
+//        		     }
+//        		}   
+//        	}
+//        	else if(argss[0].equals("del"))
+//        	{
+//        		path=argss[1].split("/");
+//        		Number160 id=(Number160) pm.getdir(PeerManager.ROOT, path[0]);
+//        		for (int i=1;i<path.length-1;i++)
+//        		{
+//        			id=(Number160)pm.getdir(id,path[i]);
+//        		}
+//        		pm.deldirfile(id, path[path.length-1]);
+//        	}
+//        	else if(argss[0].equals("put"))
+//        	{
+//        		path=argss[1].split("/");
+//        		Number160 id=(Number160) pm.getdir(PeerManager.ROOT, path[0]);
+//        		for (int i=1;i<path.length-1;i++)
+//        		{
+//        			id=(Number160)pm.getdir(id,path[i]);
+//        		}
+//        		pm.putdir(id, path[path.length-1], argss[2]) ;
+//        	}
+//        	else if(argss[0].equals("get"))
+//        	{
+//        		path=argss[1].split("/");
+//        		Number160 id=(Number160) pm.getdir(PeerManager.ROOT, path[0]);
+//        		for (int i=1;i<path.length-1;i++)
+//        		{
+//        			id=(Number160)pm.getdir(id,path[i]);
+//        		}
+//        		System.out.println((String)pm.getdir(id, path[path.length-1])) ;
+//        	}
+//        	else if(argss[0].equals("exit"))
+//        	{
+//        		pm.peer().shutdown();
+//        		break;
+//        	}
         }
         
+    }
+    static Number160 getid(String opath,PeerManager pm) throws ClassNotFoundException, IOException{
+    	String[] path;
+    	path=opath.split("/");
+		Number160 id=(Number160)pm.getdir(PeerManager.ROOT, path[0]);
+		for (int i=1;i<path.length-1;i++)
+		{
+			id=(Number160)pm.getdir(id,path[i]);
+		}
+    	return id;
     }
 	static String getLine() {
 		System.out.print(">");
