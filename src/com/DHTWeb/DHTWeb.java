@@ -208,6 +208,7 @@ public class DHTWeb {
         {
         	pm=new PeerManager(PeerManager.ReadKey("master_"),
         			PeerManager.ReadKey("root_"));     	
+        	pm.store(args[1], args[2]);
         }
         while(pm!=null)
         {
@@ -216,10 +217,15 @@ public class DHTWeb {
         	String[] path;
         	if(cmd.equals("stat"))
         	{
-        		System.out.println("Ser--------");
-    			for (PeerAddress pa : pm.peer().peerBean().peerMap().all()) {
-    					System.out.println("peer online (TCP):" + pa);
-    			}			
+        		for(;;)
+        		{
+	        		System.out.println("Ser--------");
+	    			for (PeerAddress pa : pm.peer().peerBean().peerMap().all()) {
+	    					System.out.println("peer online (TCP):" + pa);
+	    			}	
+	    			System.out.println("g:" + (String)pm.get("test.me"));
+	    			Thread.sleep(2000);
+        		}
         	}
         	else if(argss[0].equals("mkdir"))
         	{

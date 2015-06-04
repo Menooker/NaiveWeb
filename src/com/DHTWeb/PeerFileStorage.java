@@ -47,7 +47,7 @@ public class PeerFileStorage implements Storage {
     //for full control
     public PeerFileStorage(DB db, Number160 peerId, File path, SignatureFactory signatureFactory, int storageCheckIntervalMillis) {
     	this.db = db;
-    	ShitSerializer dataSerializer = new ShitSerializer(path, signatureFactory);
+    	MySerializer dataSerializer = new MySerializer(path, signatureFactory);
     	this.dataMap = db.createTreeMap("dataMap_" + peerId.toString()).valueSerializer(dataSerializer).makeOrGet();
     	this.timeoutMap = db.createTreeMap("timeoutMap_" + peerId.toString()).makeOrGet();
     	this.timeoutMapRev = db.createTreeMap("timeoutMapRev_" + peerId.toString()).makeOrGet();
