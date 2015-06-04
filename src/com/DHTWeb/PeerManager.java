@@ -256,6 +256,7 @@ public class PeerManager {
             peer.peer().discover().peerAddress(fb.bootstrapTo().iterator().next()).start().awaitUninterruptibly();
         }
         masterevaluationScheme=new KeyEvaluationScheme(mKey.getPublic(),factory);
+        rootevaluationScheme=new KeyEvaluationScheme(rKey.getPublic(),factory);
 
     }
 	
@@ -280,6 +281,7 @@ public class PeerManager {
             peer.peer().discover().peerAddress(fb.bootstrapTo().iterator().next()).start().awaitUninterruptibly();
         }
         masterevaluationScheme=new KeyEvaluationScheme(mKey.getPublic(),factory);
+        rootevaluationScheme=new KeyEvaluationScheme(rKey.getPublic(),factory);
 
     }
     public PeerManager(String host) throws Exception {
@@ -366,9 +368,13 @@ public class PeerManager {
        	else
        	{
        		mKey=ReadPublicKey("master_");
-       		//System.out.println("Master Public Key is "+mKey.getPublic());
+       	}
+       	if(!isRootNode)
+       	{
+       		rKey=ReadPublicKey("root_");
        	}
        	masterevaluationScheme=new KeyEvaluationScheme(mKey.getPublic(),factory);
+       	rootevaluationScheme=new KeyEvaluationScheme(rKey.getPublic(),factory);
        	peer=builder.start();
     	System.out.println("My public key is "+peer2Owner);
     	System.out.println("My public peerID is "+peer.peerID());
@@ -396,8 +402,10 @@ public class PeerManager {
      * @return
      * @throws IOException
      * @throws NotMasterNodeException
+     * @throws SignatureException 
+     * @throws InvalidKeyException 
      */
-    public boolean createdir(Number160 parent,String dirname,Number160 dir)throws IOException,NotMasterNodeException
+    public boolean createdir(Number160 parent,String dirname,Number160 dir)throws IOException,NotMasterNodeException, InvalidKeyException, SignatureException
     {
     	return createdir(parent,Number160.createHash(dirname),dir);
     }
@@ -412,8 +420,10 @@ public class PeerManager {
      * @return
      * @throws IOException
      * @throws NotMasterNodeException
+     * @throws SignatureException 
+     * @throws InvalidKeyException 
      */
-    public boolean createdir(Number160 parent,Number160 dirname,Number160 dir)throws IOException,NotMasterNodeException
+    public boolean createdir(Number160 parent,Number160 dirname,Number160 dir)throws IOException,NotMasterNodeException, InvalidKeyException, SignatureException
     {
     	return createdir(parent,dirname,dir,mKey);
     }
@@ -427,8 +437,10 @@ public class PeerManager {
      * @return
      * @throws IOException
      * @throws NotMasterNodeException
+     * @throws SignatureException 
+     * @throws InvalidKeyException 
      */
-    public boolean createrootdir(String dirname,Number160 dir)throws IOException,NotMasterNodeException
+    public boolean createrootdir(String dirname,Number160 dir)throws IOException,NotMasterNodeException, InvalidKeyException, SignatureException
     {
     	return createrootdir(Number160.createHash(dirname),dir);
     }
@@ -443,8 +455,10 @@ public class PeerManager {
      * @return
      * @throws IOException
      * @throws NotMasterNodeException
+     * @throws SignatureException 
+     * @throws InvalidKeyException 
      */
-    public boolean createrootdir(Number160 dirname,Number160 dir)throws IOException,NotMasterNodeException
+    public boolean createrootdir(Number160 dirname,Number160 dir)throws IOException,NotMasterNodeException, InvalidKeyException, SignatureException
     {
     	return createdir(ROOT,dirname,dir,rKey);
     }
@@ -460,8 +474,10 @@ public class PeerManager {
      * @return
      * @throws IOException
      * @throws NotMasterNodeException
+     * @throws SignatureException 
+     * @throws InvalidKeyException 
      */
-    public boolean createdir(Number160 parent,Number160 dirname,Number160 dir,KeyPair k)throws IOException,NotMasterNodeException
+    public boolean createdir(Number160 parent,Number160 dirname,Number160 dir,KeyPair k)throws IOException,NotMasterNodeException, InvalidKeyException, SignatureException
     {
     	if(!isMasterNode)
     	{
@@ -470,11 +486,11 @@ public class PeerManager {
     	}
     	FuturePut p;
 
-		p = peer.put(parent).data(dirname,(new Data(dir).protectEntry(k))).keyPair(k).sign().domainKey(Number160.ZERO).start();
+		p = peer.put(parent).data(dirname,(new Data(dir).protectEntryNow(k,factory).sign(k.getPrivate()))).keyPair(k).sign().domainKey(Number160.ZERO).start();
 	    p.awaitUninterruptibly();
 	    if(!p.isSuccess())
 	    	return false;
-		p = peer.put(dir).data(Number160.ZERO,(new Data(DIR_MAGIC).protectEntry(k))).keyPair(k).sign().domainKey(Number160.ZERO).start();
+		p = peer.put(dir).data(Number160.ZERO,(new Data(DIR_MAGIC).protectEntryNow(k,factory).sign(k.getPrivate()))).keyPair(k).sign().domainKey(Number160.ZERO).start();
 	    p.awaitUninterruptibly();	  
 	    return p.isSuccess();
     }
@@ -507,7 +523,10 @@ public class PeerManager {
 		FutureGet futureGet = peer.get(parent).domainKey(Number160.ZERO).contentKey(name).start();
 		futureGet.awaitUninterruptibly();
 		if (futureGet.isSuccess()) {
-			return futureGet.data().object();
+			if(parent.equals(ROOT))
+				return getdata(futureGet,rootevaluationScheme).object();
+			else
+				return getdata(futureGet,masterevaluationScheme).object();
 		}
 		return null;
 	}
@@ -522,7 +541,10 @@ public class PeerManager {
 		FutureGet futureGet = peer.get(parent).domainKey(Number160.ZERO).all().start();
 		futureGet.awaitUninterruptibly();
 		if (futureGet.isSuccess()) {
-			return new DataMapReader(parent,Number160.ZERO, futureGet.dataMap());
+			if(parent.equals(ROOT))
+				return new DataMapReader(parent,Number160.ZERO, getmap(futureGet,rootevaluationScheme));
+			else
+				return new DataMapReader(parent,Number160.ZERO, getmap(futureGet,masterevaluationScheme));
 		}
 		return null; 	
     }
@@ -537,8 +559,10 @@ public class PeerManager {
      * @return
      * @throws IOException
      * @throws NotMasterNodeException
+     * @throws SignatureException 
+     * @throws InvalidKeyException 
      */
-    public boolean putdir(Number160 parent,String name,Object d)throws IOException,NotMasterNodeException
+    public boolean putdir(Number160 parent,String name,Object d)throws IOException,NotMasterNodeException, InvalidKeyException, SignatureException
     {
     	return putdir(parent,Number160.createHash(name),d);
 	}
@@ -553,15 +577,17 @@ public class PeerManager {
      * @return
      * @throws IOException
      * @throws NotMasterNodeException
+     * @throws SignatureException 
+     * @throws InvalidKeyException 
      */
-    public boolean putdir(Number160 parent,Number160 dirname,Object d)throws IOException,NotMasterNodeException
+    public boolean putdir(Number160 parent,Number160 dirname,Object d)throws IOException,NotMasterNodeException, InvalidKeyException, SignatureException
     {
     	if(!isMasterNode)
     	{
     		NotMasterNodeException e=new NotMasterNodeException();
     		throw e;
     	}
-		FuturePut p = peer.put(parent).data(dirname,(new Data(d).protectEntry(mKey))).keyPair(mKey).sign().domainKey(Number160.ZERO).start();
+		FuturePut p = peer.put(parent).data(dirname,(new Data(d).protectEntryNow(mKey,factory).sign(mKey.getPrivate()))).keyPair(mKey).sign().domainKey(Number160.ZERO).start();
 	    p.awaitUninterruptibly();   
 	    return p.isSuccess();
     }
