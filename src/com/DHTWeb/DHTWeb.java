@@ -85,43 +85,35 @@ public class DHTWeb {
         	pm=new PeerManager(PeerManager.ReadKey("master_"),
         			PeerManager.ReadKey("root_"));     	
         }
-
         
-        /*for(Entry<Number640, Data> entry: pm.readdir(getid("data/testjpeg",pm)).m.entrySet()){    
-		     System.out.print(entry.getKey().contentKey()+"--->");    
-		     if(entry.getValue().object().getClass()==String.class)
-		     {
-		    	 System.out.println((String)entry.getValue().object());
-		     }
-		     else if(entry.getValue().object().getClass()==Number160.class)
-		     {
-		    	 System.out.println((Number160)entry.getValue().object());
-		     }
-		     else 
-		     {
-		    	 System.out.println(entry.getValue().object());
-		     }
-		} */
-        
-        
-        while(pm!=null)
+        if(args[args.length-1].equals("cmd"))
         {
-
-        	int port = 6789;
-    		// Establish the listen socket.
-    		ServerSocket welcomeSocket = new ServerSocket(port);
-    		// Process HTTP service requests in an infinite loop.
-    		while (true) {
-    			// Listen for a TCP connection request.
-    			Socket connectionSocket = welcomeSocket.accept();
-    			// Listen for a TCP connection request.
-    			HttpRequest request = new HttpRequest(connectionSocket,pm);
-    			// Create a new thread to process the request.
-    			Thread thread = new Thread(request);
-    			// Start the thread.
-    			thread.start();
-    		}
+        	System.out.println("Command Mode");
+        	FileSystemShell.loop(pm);
         }
+        else if(args[args.length-1].equals("svr"))
+        {
+        	System.out.println("Local server Mode");
+            while(pm!=null)
+            {
+
+            	int port = 6789;
+        		// Establish the listen socket.
+        		ServerSocket welcomeSocket = new ServerSocket(port);
+        		// Process HTTP service requests in an infinite loop.
+        		while (true) {
+        			// Listen for a TCP connection request.
+        			Socket connectionSocket = welcomeSocket.accept();
+        			// Listen for a TCP connection request.
+        			HttpRequest request = new HttpRequest(connectionSocket,pm);
+        			// Create a new thread to process the request.
+        			Thread thread = new Thread(request);
+        			// Start the thread.
+        			thread.start();
+        		}
+            }     	
+        }   
+
         
     }
 
