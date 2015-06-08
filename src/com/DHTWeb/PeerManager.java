@@ -753,6 +753,27 @@ public class PeerManager {
 
 	
 	/**
+	 * Get the dir id of a path
+	 * @param opath
+	 * The directory's path, separated by '/'
+	 * @return
+	 * @throws ClassNotFoundException
+	 * @throws IOException
+	 */
+    public Number160 dirid(String opath) throws ClassNotFoundException, IOException{
+    	String[] path;
+    	path=opath.split("/");
+		Number160 id=(Number160)getdir(PeerManager.ROOT, path[0]);
+		for (int i=1;i<path.length-1;i++)
+		{
+			id=(Number160)getdir(id,path[i]);
+		}
+    	return id;
+    }
+	
+	
+	
+	/**
 	 * Remove an object directly at index "name"
 	 * @param name
 	 * The index of the object

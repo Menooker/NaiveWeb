@@ -1,6 +1,11 @@
 package com.DHTWeb;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Map.Entry;
 
@@ -65,7 +70,6 @@ public class FileSystemShell {
 								.all()) {
 							System.out.println("peer online (TCP):" + pa);
 						}
-						System.out.println("g:" + (String) pm.get("test.me"));
 					//	Thread.sleep(2000);
 					//}
 				} else if (argss[0].equals("mkdir")) {
@@ -127,6 +131,61 @@ public class FileSystemShell {
 				} else if (argss[0].equals("exit")) {
 					pm.peer().shutdown();
 					break;
+				}
+				else if(argss[0].equals("puttxt"))
+				{
+					File file=new File(argss[2]);
+					Long filelength = file.length(); // 获取文件长度
+					byte[] filecontent = new byte[filelength.intValue()];
+					try {
+						FileInputStream in = new FileInputStream(file);
+						in.read(filecontent);
+						in.close();
+
+					} catch (FileNotFoundException e) {
+
+						e.printStackTrace();
+
+					} catch (IOException e) {
+
+						e.printStackTrace();
+
+					}
+					path = argss[1].split("/");
+					Number160 id = (Number160) pm.getdir(PeerManager.ROOT,
+							path[0]);
+					for (int i = 1; i < path.length - 1; i++) {
+						id = (Number160) pm.getdir(id, path[i]);
+					}					
+					System.out.println(pm.putdir(id, path[path.length - 1], new String(filecontent)));
+
+				}
+				else if(argss[0].equals("putbin"))
+				{
+					File file=new File(argss[2]);
+					Long filelength = file.length(); // 获取文件长度
+					byte[] filecontent = new byte[filelength.intValue()];
+					try {
+						FileInputStream in = new FileInputStream(file);
+						in.read(filecontent);
+						in.close();
+
+					} catch (FileNotFoundException e) {
+
+						e.printStackTrace();
+
+					} catch (IOException e) {
+
+						e.printStackTrace();
+
+					}
+					path = argss[1].split("/");
+					Number160 id = (Number160) pm.getdir(PeerManager.ROOT,
+							path[0]);
+					for (int i = 1; i < path.length - 1; i++) {
+						id = (Number160) pm.getdir(id, path[i]);
+					}					
+					System.out.println(pm.putdir(id, path[path.length - 1], filecontent));				
 				}
 			} catch (Exception e) {
 				e.printStackTrace();

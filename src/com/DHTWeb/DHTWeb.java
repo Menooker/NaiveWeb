@@ -64,6 +64,13 @@ public class DHTWeb {
         	pm.store(args[1],args[2]);
         	pm.createrootdir("data",Number160.createHash("DIR_DATA"));
         	pm.createrootdir("img",Number160.createHash("DIR_IMG"));
+            pm.putdir(pm.dirid("data/testhtml"), "testhtml", "<html><body><h1>Hello World</h1><br>This is our DHTWeb homepage<br><img src=../data/testjpeg /></body></html>") ;
+            InputStream fis = null;  
+            fis = new FileInputStream(new File("LHDN.png"));  
+            byte[] buff = new byte[fis.available()];  
+            fis.read(buff);
+            pm.putdir(pm.dirid("data/testjpeg"), "testjpeg", buff) ;
+            fis.close();
         }
         if (args[0].equals("-c")) {
         	pm=new PeerManager(args[1]);
@@ -78,15 +85,9 @@ public class DHTWeb {
         	pm=new PeerManager(PeerManager.ReadKey("master_"),
         			PeerManager.ReadKey("root_"));     	
         }
-        pm.putdir(getid("data/testhtml",pm), "testhtml", "<html><body><h1>Hello World</h1><br>This is our DHTWeb homepage<br><img src=../data/testjpeg /></body></html>") ;
-        InputStream fis = null;  
-        fis = new FileInputStream(new File("LHDN.png"));  
-        byte[] buff = new byte[fis.available()];  
-        fis.read(buff);
-        pm.putdir(getid("data/testjpeg",pm), "testjpeg", buff) ;
-        fis.close();
+
         
-        for(Entry<Number640, Data> entry: pm.readdir(getid("data/testjpeg",pm)).m.entrySet()){    
+        /*for(Entry<Number640, Data> entry: pm.readdir(getid("data/testjpeg",pm)).m.entrySet()){    
 		     System.out.print(entry.getKey().contentKey()+"--->");    
 		     if(entry.getValue().object().getClass()==String.class)
 		     {
@@ -100,7 +101,7 @@ public class DHTWeb {
 		     {
 		    	 System.out.println(entry.getValue().object());
 		     }
-		} 
+		} */
         
         
         while(pm!=null)
@@ -123,15 +124,6 @@ public class DHTWeb {
         }
         
     }
-    static Number160 getid(String opath,PeerManager pm) throws ClassNotFoundException, IOException{
-    	String[] path;
-    	path=opath.split("/");
-		Number160 id=(Number160)pm.getdir(PeerManager.ROOT, path[0]);
-		for (int i=1;i<path.length-1;i++)
-		{
-			id=(Number160)pm.getdir(id,path[i]);
-		}
-    	return id;
-    }
+
 
 }
