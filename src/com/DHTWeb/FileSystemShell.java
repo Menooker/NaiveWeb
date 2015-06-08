@@ -25,6 +25,33 @@ public class FileSystemShell {
 		return inLine;
 	}
 
+    public static void main(String[] args) throws NumberFormatException, Exception {
+    	PeerManager pm = null;
+    	
+        if (args[0].equals("-n")) { //-s name ip key
+        	pm=new PeerManager();
+        	PeerManager.WriteKey(pm.getMasterKey(), "master_");
+        	PeerManager.WriteKey(pm.getRootKey(), "root_");
+        	
+        	pm.createrootdir("data",Number160.createHash("DIR_DATA"));
+        	pm.createrootdir("img",Number160.createHash("DIR_IMG"));
+        }
+        if (args[0].equals("-c")) {
+        	pm=new PeerManager(args[1]);
+            //peer.shutdown();
+        }
+        if(args[0].equals("-w")) //-w host name ip key
+        {
+        	pm=new PeerManager(args[1],PeerManager.ReadKey("master_"));
+        }
+        if(args[0].equals("-s"))
+        {
+        	pm=new PeerManager(PeerManager.ReadKey("master_"),
+        			PeerManager.ReadKey("root_"));     	
+        }
+        loop(pm);
+    }
+    
 	static void loop(PeerManager pm) {
 		while (pm != null) {
 			try {

@@ -433,7 +433,6 @@ public class PeerManager {
 		Peer pr=peer.peer();
 		if(!isMasterNode)
        	{
-			
 			FutureDirect fd=pr.sendDirect(remote).object("Hello").start().awaitUninterruptibly();
 			if(fd.isSuccess())
 			{
