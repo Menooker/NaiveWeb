@@ -208,7 +208,6 @@ public class DHTWeb {
         {
         	pm=new PeerManager(PeerManager.ReadKey("master_"),
         			PeerManager.ReadKey("root_"));     	
-        	pm.store(args[1], args[2]);
         }
         while(pm!=null)
         {
