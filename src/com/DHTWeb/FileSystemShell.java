@@ -7,12 +7,14 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.security.Key;
 import java.util.Map.Entry;
 
 import net.tomp2p.peers.Number160;
 import net.tomp2p.peers.Number640;
 import net.tomp2p.peers.PeerAddress;
 import net.tomp2p.storage.Data;
+import net.tomp2p.utils.Utils;
 
 public class FileSystemShell {
 	static String getLine() {
@@ -128,7 +130,30 @@ public class FileSystemShell {
 					}
 					System.out.println((String) pm.getdir(id,
 							path[path.length - 1]));
-				} else if (argss[0].equals("exit")) {
+				}
+				else if (argss[0].equals("putaddr")) {
+					path = argss[1].split("/");
+					Number160 id = (Number160) pm.getdir(PeerManager.ROOT,
+							path[0]);
+					for (int i = 1; i < path.length - 1; i++) {
+						id = (Number160) pm.getdir(id, path[i]);
+					}
+					Key k=MyCipher.toKey("NI");
+					byte[] cy=MyCipher.encrypt(pm.peer().peerAddress(), k);
+					pm.putdir(id, path[path.length - 1], cy);
+				} else if (argss[0].equals("getaddr")) {
+					path = argss[1].split("/");
+					Number160 id = (Number160) pm.getdir(PeerManager.ROOT,
+							path[0]);
+					for (int i = 1; i < path.length - 1; i++) {
+						id = (Number160) pm.getdir(id, path[i]);
+					}
+					byte[] buf=(byte[]) pm.getdir(id,path[path.length - 1]);
+					Key k=MyCipher.toKey("NI");
+					buf=MyCipher.decrypt(buf, k);
+					System.out.println((PeerAddress)Utils.decodeJavaObject(buf,0,buf.length));
+				} 
+				else if (argss[0].equals("exit")) {
 					pm.peer().shutdown();
 					break;
 				}

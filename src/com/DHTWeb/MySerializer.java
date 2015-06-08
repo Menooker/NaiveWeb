@@ -32,7 +32,6 @@ public class MySerializer implements Serializer<Data>, Serializable {
     final private SignatureFactory signatureFactory;
     
     public MySerializer(File path, SignatureFactory signatureFactory) {
-    	System.out.println("HHHHHHHH");
     	this.path = path;
     	this.signatureFactory = signatureFactory;
     }
@@ -79,7 +78,6 @@ public class MySerializer implements Serializer<Data>, Serializable {
     }
 
 	private void serializeFile(DataOutput out, Data value) throws IOException, FileNotFoundException {
-		System.out.println("FILE");
 	    Number160 hash = value.hash();
 	    // store file name
 	    out.write(hash.toByteArray());
