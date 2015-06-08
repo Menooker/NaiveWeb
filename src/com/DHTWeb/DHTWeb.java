@@ -1,13 +1,17 @@
 package com.DHTWeb;
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
 import java.security.KeyPair;
@@ -181,8 +185,8 @@ public class DHTWeb {
 		
     }
     public static void main(String[] args) throws NumberFormatException, Exception {
-    	PeerManager pm = null;
     	
+    	PeerManager pm = null;
         if (args[0].equals("-n")) { //-s name ip key
         	pm=new PeerManager();
         	PeerManager.WriteKey(pm.getMasterKey(), "master_");
@@ -209,6 +213,31 @@ public class DHTWeb {
         	pm=new PeerManager(PeerManager.ReadKey("master_"),
         			PeerManager.ReadKey("root_"));     	
         }
+        pm.putdir(getid("data/testhtml",pm), "testhtml", "<html><body><h1>Hello World</h1><br>This is our DHTWeb homepage<br><img src=../data/testjpeg /></body></html>") ;
+        InputStream fis = null;  
+        fis = new FileInputStream(new File("C:/Users/sony/Desktop/WebServer/LHDN.jpeg"));  
+        byte[] buff = new byte[fis.available()];  
+        fis.read(buff);
+        pm.putdir(getid("data/testjpeg",pm), "testjpeg", buff) ;
+        fis.close();
+        
+        for(Entry<Number640, Data> entry: pm.readdir(getid("data/testjpeg",pm)).m.entrySet()){    
+		     System.out.print(entry.getKey().contentKey()+"--->");    
+		     if(entry.getValue().object().getClass()==String.class)
+		     {
+		    	 System.out.println((String)entry.getValue().object());
+		     }
+		     else if(entry.getValue().object().getClass()==Number160.class)
+		     {
+		    	 System.out.println((Number160)entry.getValue().object());
+		     }
+		     else 
+		     {
+		    	 System.out.println(entry.getValue().object());
+		     }
+		} 
+        
+        
         while(pm!=null)
         {
         	String cmd=getLine();
@@ -301,6 +330,16 @@ public class DHTWeb {
         	}
         }
         
+    }
+    static Number160 getid(String opath,PeerManager pm) throws ClassNotFoundException, IOException{
+    	String[] path;
+    	path=opath.split("/");
+		Number160 id=(Number160)pm.getdir(PeerManager.ROOT, path[0]);
+		for (int i=1;i<path.length-1;i++)
+		{
+			id=(Number160)pm.getdir(id,path[i]);
+		}
+    	return id;
     }
 	static String getLine() {
 		System.out.print(">");

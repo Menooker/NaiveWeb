@@ -4,3 +4,4 @@ master_publickey
 root_privatekey
 root_publickey
 run_cli.sh~
+/bin/
