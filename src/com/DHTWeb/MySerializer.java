@@ -22,7 +22,7 @@ import net.tomp2p.storage.Data;
 
 import org.mapdb.Serializer;
 
-public class ShitSerializer implements Serializer<Data>, Serializable {
+public class MySerializer implements Serializer<Data>, Serializable {
 
     private static final long serialVersionUID = 1428836065493792295L;
     //TODO: test the performance impact
@@ -31,7 +31,7 @@ public class ShitSerializer implements Serializer<Data>, Serializable {
     final private File path;
     final private SignatureFactory signatureFactory;
     
-    public ShitSerializer(File path, SignatureFactory signatureFactory) {
+    public MySerializer(File path, SignatureFactory signatureFactory) {
     	System.out.println("HHHHHHHH");
     	this.path = path;
     	this.signatureFactory = signatureFactory;
