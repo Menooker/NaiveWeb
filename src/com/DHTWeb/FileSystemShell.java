@@ -141,6 +141,12 @@ public class FileSystemShell {
 					pm.exit();
 					break;
 				}
+				else if (argss[0].equals("msend")) {
+					pm.mastercall("HI");
+				}
+				else if (argss[0].equals("rsend")) {
+					pm.rootcall("HI");
+				}				
 				else if(argss[0].equals("puttxt"))
 				{
 					File file=new File(argss[2]);

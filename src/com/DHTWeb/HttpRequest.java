@@ -58,6 +58,7 @@ public final class HttpRequest  implements Runnable {
 		String fileName = tokens.nextToken();
 		System.out.println("ddddd"+ fileName) ;
 		// Open the requested file.
+		
 		FileInputStream fis1 = null;
 		boolean fileExists = true;
 		Object respondobj = null;
