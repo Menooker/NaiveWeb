@@ -11,6 +11,8 @@ import net.tomp2p.rpc.ObjectDataReply;
 
 public class DHTWeb {
 
+	static PeerManager pm;
+	
 	
 	public static class ReplyListener implements ObjectDataReply
 	{
@@ -23,9 +25,22 @@ public class DHTWeb {
 		
 	}
 	static ReplyListener listener=new ReplyListener();
+	
+	private static class ExitHandler extends Thread {
+		public ExitHandler() {
+			super("Exit Handler");
+		}
+
+		public void run() {
+			pm.exit();
+		}
+	}
+	   
     public static void main(String[] args) throws NumberFormatException, Exception {
-    	
-    	PeerManager pm = null;
+ 
+    	Runtime.getRuntime().addShutdownHook(new ExitHandler());
+
+    	pm= null;
         if (args[0].equals("-n")) { //-s name ip key
         	pm=new PeerManager(args[1],listener);
         	PeerManager.WriteKey(pm.getMasterKey(), "master_");
@@ -88,7 +103,7 @@ public class DHTWeb {
         		}
             }     	
         }   
-
+    	
         
     }
 

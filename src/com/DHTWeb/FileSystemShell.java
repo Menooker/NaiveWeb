@@ -138,7 +138,6 @@ public class FileSystemShell {
 					System.out.println((PeerAddress)pm.lockgetdir(id,path[path.length - 1]));
 				} 
 				else if (argss[0].equals("exit")) {
-					pm.exit();
 					break;
 				}
 				else if (argss[0].equals("msend")) {
