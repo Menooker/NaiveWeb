@@ -57,11 +57,10 @@ public class DHTWeb {
     	
     	PeerManager pm = null;
         if (args[0].equals("-n")) { //-s name ip key
-        	pm=new PeerManager();
+        	pm=new PeerManager(args[1]);
         	PeerManager.WriteKey(pm.getMasterKey(), "master_");
         	PeerManager.WriteKey(pm.getRootKey(), "root_");
-        	
-        	pm.store(args[1],args[2]);
+      
         	pm.createrootdir("data",Number160.createHash("DIR_DATA"));
         	pm.createrootdir("img",Number160.createHash("DIR_IMG"));
             pm.putdir(pm.dirid("data/testhtml"), "testhtml", "<html><body><h1>Hello World</h1><br>This is our DHTWeb homepage<br><img src=../data/testjpeg /></body></html>") ;
@@ -73,7 +72,7 @@ public class DHTWeb {
             fis.close();
         }
         if (args[0].equals("-c")) {
-        	pm=new PeerManager(args[1]);
+        	pm=new PeerManager(args[1],1);
             //peer.shutdown();
         }
         if(args[0].equals("-w")) //-w host name ip key
@@ -83,8 +82,14 @@ public class DHTWeb {
         if(args[0].equals("-s"))
         {
         	pm=new PeerManager(PeerManager.ReadKey("master_"),
-        			PeerManager.ReadKey("root_"));     	
+        			PeerManager.ReadKey("root_"),args[1]);     	
         }
+        if(args[0].equals("-j"))
+        {
+        	pm=new PeerManager(args[1],PeerManager.ReadKey("master_"),
+        			PeerManager.ReadKey("root_"),args[2]);     	
+        }       
+        
         
         if(args[args.length-1].equals("cmd"))
         {

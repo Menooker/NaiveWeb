@@ -32,32 +32,7 @@ public class FileSystemShell {
 		return inLine;
 	}
 
-    public static void main(String[] args) throws NumberFormatException, Exception {
-    	PeerManager pm = null;
-    	
-        if (args[0].equals("-n")) { //-s name ip key
-        	pm=new PeerManager();
-        	PeerManager.WriteKey(pm.getMasterKey(), "master_");
-        	PeerManager.WriteKey(pm.getRootKey(), "root_");
-        	
-        	pm.createrootdir("data",Number160.createHash("DIR_DATA"));
-        	pm.createrootdir("img",Number160.createHash("DIR_IMG"));
-        }
-        if (args[0].equals("-c")) {
-        	pm=new PeerManager(args[1]);
-            //peer.shutdown();
-        }
-        if(args[0].equals("-w")) //-w host name ip key
-        {
-        	pm=new PeerManager(args[1],PeerManager.ReadKey("master_"));
-        }
-        if(args[0].equals("-s"))
-        {
-        	pm=new PeerManager(PeerManager.ReadKey("master_"),
-        			PeerManager.ReadKey("root_"));     	
-        }
-        loop(pm);
-    }
+
     
 	static void loop(PeerManager pm) {
 		while (pm != null) {
@@ -105,6 +80,19 @@ public class FileSystemShell {
 							System.out.println(entry.getValue().object());
 						}
 					}
+				} 
+				else if (argss[0].equals("roots")) {
+
+					for (Entry<Number640, Data> entry : pm.readdir(PeerManager.ROOT_PEERS).m
+							.entrySet()) {
+						System.out.print(entry.getKey().contentKey() + "--->");
+
+						if (entry.getValue().object().getClass() == PeerAddress.class) {
+							System.out.println((PeerAddress) entry.getValue().object());
+						} else {
+							System.out.println(entry.getValue().object());
+						}
+					}
 				} else if (argss[0].equals("del")) {
 					path = argss[1].split("/");
 					Number160 id = (Number160) pm.getdir(PeerManager.ROOT,
@@ -138,9 +126,7 @@ public class FileSystemShell {
 					for (int i = 1; i < path.length - 1; i++) {
 						id = (Number160) pm.getdir(id, path[i]);
 					}
-					Key k=MyCipher.toKey("NI");
-					byte[] cy=MyCipher.encrypt(pm.peer().peerAddress(), k);
-					pm.putdir(id, path[path.length - 1], cy);
+					pm.lockputdir(id, path[path.length - 1], pm.peer().peerAddress());
 				} else if (argss[0].equals("getaddr")) {
 					path = argss[1].split("/");
 					Number160 id = (Number160) pm.getdir(PeerManager.ROOT,
@@ -148,13 +134,11 @@ public class FileSystemShell {
 					for (int i = 1; i < path.length - 1; i++) {
 						id = (Number160) pm.getdir(id, path[i]);
 					}
-					byte[] buf=(byte[]) pm.getdir(id,path[path.length - 1]);
-					Key k=MyCipher.toKey("NI");
-					buf=MyCipher.decrypt(buf, k);
-					System.out.println((PeerAddress)Utils.decodeJavaObject(buf,0,buf.length));
+
+					System.out.println((PeerAddress)pm.lockgetdir(id,path[path.length - 1]));
 				} 
 				else if (argss[0].equals("exit")) {
-					pm.peer().shutdown();
+					pm.exit();
 					break;
 				}
 				else if(argss[0].equals("puttxt"))

@@ -9,6 +9,7 @@ import java.io.Serializable;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -71,6 +72,8 @@ public class PeerManager {
 	static final ProtectionEnable PROTECT=ProtectionEnable.ALL;
 	static final ProtectionMode PROTECTMODE=ProtectionMode.MASTER_PUBLIC_KEY;
 	public static final Number160 ROOT=Number160.createHash(10086);
+	public static final Number160 ROOT_PEERS=Number160.createHash(54749110);
+	
 	public static final Number160 DIR_MAGIC=Number160.ONE;	
 
 	private static final DSASignatureFactory factory = new DSASignatureFactory();
@@ -79,16 +82,23 @@ public class PeerManager {
 	private PeerDHT peer;
 	KeyPair mKey;
 	KeyPair rKey;
+	Key rLockKey;
 	boolean isMasterNode;
 	boolean isRootNode;
 	KeyEvaluationScheme masterevaluationScheme;
 	KeyEvaluationScheme rootevaluationScheme;
+	Random rand=new Random();
+	ObjectDataReply replylistener;
+	
+	PeerAddress lastmaster;
+	PeerAddress lastroot;
 	
 	public class NotMasterNodeException extends Exception
 	{
 		
 	}
-
+	
+	
 
 	final static int KEY_LENGTH=443;
 	static byte[] CreateMyKeys(PublicKey master, PublicKey root) {
@@ -116,7 +126,13 @@ public class PeerManager {
 	class ServerReply implements ObjectDataReply {
 		@Override
 		public Object reply(PeerAddress sender, Object request) throws Exception {
-			return CreateMyKeys(mKey.getPublic(),rKey.getPublic());
+			String req=(String)request;
+			if(req.equals("Hello"))
+				return CreateMyKeys(mKey.getPublic(),rKey.getPublic());
+			else if(replylistener!=null)
+				return replylistener.reply(sender, request);
+			else
+				return null;
 		}
 	}
 	public class MyStorage extends PeerFileStorage {
@@ -273,23 +289,26 @@ public class PeerManager {
 
 	}
 	
-    public PeerManager(KeyPair mkey,KeyPair rkey) throws Exception {
+    public PeerManager(KeyPair mkey,KeyPair rkey,String pw) throws Exception {
     	isMasterNode=true;
     	isRootNode=true;
        
         mKey = mkey;
- 
         rKey = rkey;
+        rLockKey=MyCipher.toKey(pw);
         
         Bindings b = new Bindings();
-        Number160 peer2Owner = Utils.makeSHAHash( mKey.getPublic().getEncoded() );
+        byte[] id=new byte[20];
+        rand.nextBytes(id);
+        Number160 peer2Owner = Utils.makeSHAHash(id);
+        Number160 publick=Utils.makeSHAHash(mKey.getPublic().getEncoded());
         System.out.println("Root Mode");
-        Peer pr=new PeerBuilder(mKey).ports(4000).bindings(b).start();
+        Peer pr=new PeerBuilder(peer2Owner).ports(4000).bindings(b).start();
         pr.objectDataReply(new ServerReply());
-    	peer = new PeerBuilderDHT(pr).storage(make_storage(peer2Owner)).start();
+    	peer = new PeerBuilderDHT(pr).storage(make_storage(publick)).start();
     	peer.storageLayer().protection(  PROTECT, PROTECTMODE , PROTECT,
     			PROTECTMODE  );
-    	System.out.println("My public key is "+peer2Owner);
+    	System.out.println("My public key is "+publick);
     	System.out.println("My public peerID is "+peer.peerID());
         FutureBootstrap fb = peer.peer().bootstrap().inetAddress(InetAddress.getByName("127.0.0.1")).ports(4000).start();
         fb.awaitUninterruptibly();
@@ -299,17 +318,18 @@ public class PeerManager {
         masterevaluationScheme=new KeyEvaluationScheme(mKey.getPublic(),factory);
         rootevaluationScheme=new KeyEvaluationScheme(rKey.getPublic(),factory);
         System.out.println(pr.peerAddress());
-        
+       	if(isRootNode)
+       		putdir(ROOT_PEERS,peer.peerID(),peer.peerAddress(),rKey);
     }
 	
-    public PeerManager() throws Exception {
+    public PeerManager(String pw) throws Exception {
     	isMasterNode=true;
     	isRootNode=true;
         KeyPairGenerator gen = KeyPairGenerator.getInstance( "DSA" );
         KeyPair pair1 = gen.generateKeyPair();
         mKey=pair1;
- 
         rKey = gen.generateKeyPair();
+        rLockKey=MyCipher.toKey(pw);
         
         Bindings b = new Bindings();
         Number160 peer2Owner = Utils.makeSHAHash( pair1.getPublic().getEncoded() );
@@ -327,16 +347,18 @@ public class PeerManager {
         }
         masterevaluationScheme=new KeyEvaluationScheme(mKey.getPublic(),factory);
         rootevaluationScheme=new KeyEvaluationScheme(rKey.getPublic(),factory);
+       	
+       	putdir(ROOT_PEERS,peer.peerID(),peer.peerAddress(),rKey);
 
     }
-    public PeerManager(String host) throws Exception {
-    	initPeerManager(host,null,null);
+    public PeerManager(String host,int dummy) throws Exception {
+    	initPeerManager(host,null,null,null);
     }
     public PeerManager(String host,KeyPair masterKey) throws Exception {
-    	initPeerManager(host,masterKey,null);
+    	initPeerManager(host,masterKey,null,null);
     }   
-    public PeerManager(String host,KeyPair masterKey,KeyPair rootKey) throws Exception {
-    	initPeerManager(host,masterKey,rootKey);
+    public PeerManager(String host,KeyPair masterKey,KeyPair rootKey,String pw) throws Exception {
+    	initPeerManager(host,masterKey,rootKey,pw);
     }   
     public PeerDHT peer()
     {
@@ -398,21 +420,23 @@ public class PeerManager {
 		
     }
     
-    private void initPeerManager(String host,KeyPair masterKey,KeyPair rootKey) throws Exception {
+    private void initPeerManager(String host,KeyPair masterKey,KeyPair rootKey,String pw) throws Exception {
     	
         isMasterNode= (masterKey!=null);
         isRootNode= (rootKey!=null);
         mKey=masterKey;
         Bindings b = new Bindings();
     	KeyPairGenerator gen = KeyPairGenerator.getInstance( "DSA" );
-
+    	if(pw!=null)
+    		rLockKey=MyCipher.toKey(pw);
        	KeyPair pair1 = gen.generateKeyPair();
        	Number160 peer2Owner = Utils.makeSHAHash( pair1.getPublic().getEncoded() );
        	PeerBuilderDHT builder= new PeerBuilderDHT(new PeerBuilder(pair1).bindings(b).ports(4000+rnd.nextInt()%10000).behindFirewall().start());
        	if(isMasterNode)
        	{
+       		Number160 publick=Utils.makeSHAHash(mKey.getPublic().getEncoded());
        		builder.peer().objectDataReply(new ServerReply());
-       		builder.storage(make_storage(peer2Owner));
+       		builder.storage(make_storage(publick));
        	}
 
 
@@ -447,9 +471,87 @@ public class PeerManager {
 			}
        		//mKey=ReadPublicKey("master_");
        	}
+		if(rKey==null)
+			rKey=PeerManager.ReadPublicKey("root_");
        	masterevaluationScheme=new KeyEvaluationScheme(mKey.getPublic(),factory);
        	rootevaluationScheme=new KeyEvaluationScheme(rKey.getPublic(),factory);
+       	if(isRootNode)
+       		putdir(ROOT_PEERS,peer.peerID(),peer.peerAddress(),rKey);
     }
+    
+    
+    
+    
+    
+    /**
+     * put the object in the dir, protected by root key, encrypted by root lock key.
+     * @param parent
+     * @param name
+     * @param d
+     * @return
+     * @throws Exception
+     */
+    public boolean lockputdir(Number160 parent,String name,Object d)throws Exception
+    {
+    	return lockputdir(parent,Number160.createHash(name),d);
+    }
+  
+    
+
+    /**
+     * put the object in the dir, protected by root key, encrypted by root lock key.
+     * @param parent
+     * @param name
+     * @param d
+     * @return
+     * @throws Exception
+     */
+    public boolean lockputdir(Number160 parent,Number160 name,Object d)throws Exception
+    {
+    	if(!isRootNode)
+    		throw new NotMasterNodeException();
+		byte[] buf=MyCipher.encrypt(d, rLockKey);
+		DummyCryptObj b=new DummyCryptObj();
+		b.by=buf;
+		FuturePut p = peer.put(parent).data(name,(new Data(b).protectEntryNow(rKey,factory).sign(rKey.getPrivate()))).keyPair(rKey).sign().domainKey(Number160.ZERO).start();
+	    p.awaitUninterruptibly();   
+	    return p.isSuccess();
+    }
+    
+    /**
+     * Get the object in the dir, protected by root key, encrypted by root lock key.
+     * @param parent
+     * @param name
+     * @param d
+     * @return
+     * @throws Exception
+     */
+    public Object lockgetdir(Number160 parent,Number160 name)throws Exception
+    {
+    	if(!isRootNode)
+    		throw new NotMasterNodeException();
+		FutureGet futureGet = peer.get(parent).domainKey(Number160.ZERO).contentKey(name).start();
+		futureGet.awaitUninterruptibly();
+		if (futureGet.isSuccess()) {
+			DummyCryptObj buf=(DummyCryptObj)getdata(futureGet,rootevaluationScheme).object();
+			return MyCipher.decryptobj(buf.by, rLockKey);
+		}
+		return null;
+    }
+       
+    /**
+     * Get the object in the dir, protected by root key, encrypted by root lock key.
+     * @param parent
+     * @param name
+     * @param d
+     * @return
+     * @throws Exception
+     */
+    public Object lockgetdir(Number160 parent,String name)throws Exception
+    {
+    	return lockgetdir(parent,Number160.createHash(name));
+    }
+    
     
     /**
      * Create a directory in a non-root directory
@@ -582,7 +684,7 @@ public class PeerManager {
 		FutureGet futureGet = peer.get(parent).domainKey(Number160.ZERO).contentKey(name).start();
 		futureGet.awaitUninterruptibly();
 		if (futureGet.isSuccess()) {
-			if(parent.equals(ROOT))
+			if(parent.equals(ROOT) || parent.equals(ROOT_PEERS))
 				return getdata(futureGet,rootevaluationScheme).object();
 			else
 				return getdata(futureGet,masterevaluationScheme).object();
@@ -600,7 +702,7 @@ public class PeerManager {
 		FutureGet futureGet = peer.get(parent).domainKey(Number160.ZERO).all().start();
 		futureGet.awaitUninterruptibly();
 		if (futureGet.isSuccess()) {
-			if(parent.equals(ROOT))
+			if(parent.equals(ROOT) || parent.equals(ROOT_PEERS))
 				return new DataMapReader(parent,Number160.ZERO, getmap(futureGet,rootevaluationScheme));
 			else
 				return new DataMapReader(parent,Number160.ZERO, getmap(futureGet,masterevaluationScheme));
@@ -626,8 +728,15 @@ public class PeerManager {
     	return putdir(parent,Number160.createHash(name),d);
 	}
  
+    
+    public boolean putdir(Number160 parent,Number160 dirname,Object d)throws IOException,NotMasterNodeException, InvalidKeyException, SignatureException
+    {
+    	return putdir(parent,dirname,d,mKey);
+    }
+    
+    
     /**
-     * Put the content to the directory "parent" with entry name "name"
+     * Put the content to the directory "parent" with entry name "name" protected by k
      * @param parent
      * @param name
      * The entry's name
@@ -639,14 +748,14 @@ public class PeerManager {
      * @throws SignatureException 
      * @throws InvalidKeyException 
      */
-    public boolean putdir(Number160 parent,Number160 dirname,Object d)throws IOException,NotMasterNodeException, InvalidKeyException, SignatureException
+    public boolean putdir(Number160 parent,Number160 dirname,Object d,KeyPair k)throws IOException,NotMasterNodeException, InvalidKeyException, SignatureException
     {
     	if(!isMasterNode)
     	{
     		NotMasterNodeException e=new NotMasterNodeException();
     		throw e;
     	}
-		FuturePut p = peer.put(parent).data(dirname,(new Data(d).protectEntryNow(mKey,factory).sign(mKey.getPrivate()))).keyPair(mKey).sign().domainKey(Number160.ZERO).start();
+		FuturePut p = peer.put(parent).data(dirname,(new Data(d).protectEntryNow(k,factory).sign(k.getPrivate()))).keyPair(k).sign().domainKey(Number160.ZERO).start();
 	    p.awaitUninterruptibly();   
 	    return p.isSuccess();
     }
@@ -667,8 +776,14 @@ public class PeerManager {
     	return deldirfile(dir,Number160.createHash(filename));
     }
     
+    
+    public boolean deldirfile(Number160 dir,Number160 filename)throws IOException,NotMasterNodeException
+    {
+    	return deldirfile(dir,filename,mKey);
+    }
+    
     /**
-     * Delete an entry in the directory
+     * Delete an entry in the directory protected bt k
      * @param dir
      * The directory's id
      * @param filename
@@ -677,14 +792,14 @@ public class PeerManager {
      * @throws IOException
      * @throws NotMasterNodeException
      */
-    public boolean deldirfile(Number160 dir,Number160 filename)throws IOException,NotMasterNodeException
+    public boolean deldirfile(Number160 dir,Number160 filename,KeyPair k)throws IOException,NotMasterNodeException
     {
     	if(!isMasterNode)
     	{
     		NotMasterNodeException e=new NotMasterNodeException();
     		throw e;
     	}
-		FutureRemove p = peer.remove(dir).keyPair(mKey).contentKey(filename).sign().keyPair(mKey).domainKey(Number160.ZERO).start();
+		FutureRemove p = peer.remove(dir).keyPair(k).contentKey(filename).sign().keyPair(k).domainKey(Number160.ZERO).start();
 	    p.awaitUninterruptibly();   
 	    return p.isSuccess();
     }
@@ -834,4 +949,42 @@ public class PeerManager {
 	    p.awaitUninterruptibly();
 	    return p.isSuccess();
     }
+	
+	/**
+	 * Stop the peer
+	 */
+	public void exit()
+	{
+		if(isRootNode)
+		{
+			System.out.println("Exiting");
+			try {
+				this.deldirfile(ROOT_PEERS, peer.peerID(), rKey);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (NotMasterNodeException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		peer.shutdown().awaitUninterruptibly();		
+	}
+	
+	public boolean rootcall(Object o)
+	{
+		return true;
+	}
+	
+	@Override
+	protected void finalize()
+	{
+		exit();
+		try {
+			super.finalize();
+		} catch (Throwable e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
 }

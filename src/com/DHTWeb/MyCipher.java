@@ -118,6 +118,21 @@ public abstract class MyCipher  {
 		return cipher.doFinal(data);
 	}
 
+	
+	/**
+	 * Ω‚√‹
+	 * 
+	 * @param data
+	 * @param key
+	 * @return
+	 * @throws Exception
+	 */
+	public static Object decryptobj(byte[] data, Key key) throws Exception {
+		byte[] b=decrypt(data,key);
+		return Utils.decodeJavaObject(b,0,b.length);
+	}
+	
+	
 	/**
 	 * º”√‹
 	 * 
