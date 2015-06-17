@@ -5,6 +5,9 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+
+import com.DHTWeb.HttpRequest.ReplyListener;
+
 import net.tomp2p.peers.Number160;
 import net.tomp2p.peers.PeerAddress;
 import net.tomp2p.rpc.ObjectDataReply;
@@ -14,16 +17,7 @@ public class DHTWeb {
 	static PeerManager pm;
 	
 	
-	public static class ReplyListener implements ObjectDataReply
-	{
 
-		@Override
-		public Object reply(PeerAddress arg0, Object arg1) throws Exception {
-			System.out.println(arg0);
-			return null;
-		}
-		
-	}
 	static ReplyListener listener=new ReplyListener();
 	
 	private static class ExitHandler extends Thread {
@@ -39,7 +33,7 @@ public class DHTWeb {
     public static void main(String[] args) throws NumberFormatException, Exception {
  
     	Runtime.getRuntime().addShutdownHook(new ExitHandler());
-
+    	
     	pm= null;
         if (args[0].equals("-n")) { //-s name ip key
         	pm=new PeerManager(args[1],listener);
@@ -48,7 +42,9 @@ public class DHTWeb {
       
         	pm.createrootdir("data",Number160.createHash("DIR_DATA"));
         	pm.createrootdir("img",Number160.createHash("DIR_IMG"));
-            pm.putdir(pm.dirid("data/testhtml"), "testhtml", "<html><body><h1>Hello World</h1><br>This is our DHTWeb homepage<br><img src=../data/testjpeg /></body></html>") ;
+        	pm.createdir(Number160.createHash("DIR_DATA"), "threads",Number160.createHash("THREADS"));
+        	pm.createdir(Number160.createHash("DIR_DATA"), "thread_data",Number160.createHash("thread_data_data"));
+            //pm.putdir(pm.dirid("data/testhtml"), "testhtml", "<html><body><h1>Hello World</h1><br>This is our DHTWeb homepage<br><img src=../data/testjpeg /></body></html>") ;
             InputStream fis = null;  
             fis = new FileInputStream(new File("LHDN.png"));  
             byte[] buff = new byte[fis.available()];  
@@ -73,7 +69,9 @@ public class DHTWeb {
         {
         	pm=new PeerManager(args[1],PeerManager.ReadKey("master_"),
         			PeerManager.ReadKey("root_"),args[2],listener);     	
-        }       
+        }     
+        HttpRequest.init_id(pm);
+        listener.peer=pm;
         
         
         if(args[args.length-1].equals("cmd"))

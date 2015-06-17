@@ -3,9 +3,24 @@ package com.DHTWeb;
 
 import java.io.* ;
 import java.net.* ;
+import java.security.InvalidKeyException;
+import java.security.SignatureException;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Random;
+import java.util.Scanner;
 import java.util.StringTokenizer;
+import java.util.Map.Entry;
+import java.util.TreeMap;
+
+import com.DHTWeb.PeerManager.NotMasterNodeException;
 
 import net.tomp2p.peers.Number160;
+import net.tomp2p.peers.Number640;
+import net.tomp2p.peers.PeerAddress;
+import net.tomp2p.rpc.ObjectDataReply;
+import net.tomp2p.storage.Data;
 
 
 
@@ -15,6 +30,142 @@ public final class HttpRequest  implements Runnable {
 	String[] path;
 	Socket socket;
 	PeerManager pm;
+	static Number160 id_data;
+	static Number160 id_threads;//fix-me : should not be static( in case of multithread cases)
+	static Number160 id_thread_data;
+	
+	static Random rnd=new Random();
+	
+	
+	public static class PeerRequest implements Serializable
+	{
+
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = -1230610231931185223L;
+		enum REQ
+		{
+			POST_THREAD,
+			POST_REPLY
+		};
+		REQ req;
+		Number160 id;
+		String str1,str2,str3;	
+		PeerRequest(REQ req,Number160 id,String str1,String str2,String str3)
+		{
+			this.req=req;
+			this.id=id;
+			this.str1=str1;
+			this.str2=str2;
+			this.str3=str3;
+		}
+		
+	}
+	
+	static class Putter implements Runnable
+	{
+		PeerManager peer;
+		PeerRequest req;
+		Putter(PeerManager peer,PeerRequest req)
+		{
+			this.peer=peer;
+			this.req=req;
+		}
+		@Override
+		public void run() {
+			// TODO Auto-generated method stub
+			try {
+				Thread.sleep(200);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			System.out.println("PUTTING");
+			switch (req.req)
+			{
+			case POST_THREAD:
+				if(req.str2.equals("007"))
+					return ;
+				Number160 tid=Number160.createHash(rnd.nextLong());
+				try {
+					peer.createdir(id_thread_data, tid, tid);
+					peer.putdir(id_threads, tid,new ThreadItem(req.str1,req.str2));
+					peer.putdir(tid, Number160.ZERO, new ReplyItem(req.str3,req.str2,new Date()));	
+				} catch (InvalidKeyException | SignatureException | IOException
+						| NotMasterNodeException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+		
+				break;
+			case POST_REPLY:
+				Number160 tid1=req.id;
+				Number160 rid=Number160.createHash(rnd.nextLong());
+				try {
+					peer.putdir(tid1, rid, new ReplyItem(req.str1,req.str2,new Date()));
+				} catch (InvalidKeyException | SignatureException | IOException
+						| NotMasterNodeException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}			
+				break;
+			}	
+		}
+		
+	}
+	public static class ReplyListener implements ObjectDataReply
+	{
+		PeerManager peer;
+		@Override
+		public Object reply(PeerAddress arg0, Object arg1) throws Exception {
+			PeerRequest req=(PeerRequest)arg1;
+			Putter p=new Putter(peer,req);
+			Thread thread=new Thread(p);
+			thread.start();
+			System.out.println("RET OK");
+			return null;
+		}
+		
+	}
+	
+	
+	public static class ThreadItem implements Serializable
+	{
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = 3726088328990171437L;
+		String title;
+		String user;
+		ThreadItem(String t,String u)
+		{
+			title=t;user=u;
+		}
+	}
+	
+	public static class ReplyItem implements Serializable
+	{
+
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = -9160793966815370818L;
+		String content;
+		String user;
+		Date date;
+		ReplyItem(String c,String u,Date d)
+		{
+			content=c;user=u;date=d;
+		}
+	}
+	
+	static void init_id(PeerManager pm) throws ClassNotFoundException, IOException
+	{
+		if(id_data==null)		id_data=(Number160)pm.getdir(PeerManager.ROOT,"data");
+		if(id_thread_data==null)		id_thread_data=(Number160)pm.getdir(id_data,"thread_data");
+		if(id_threads==null)		id_threads=(Number160)pm.getdir(id_data, "threads");
+	}
 	public HttpRequest(Socket socket,PeerManager pm) throws Exception 
 	{
 		this.socket = socket;
@@ -31,6 +182,25 @@ public final class HttpRequest  implements Runnable {
 		}
 		
 	}
+	
+	HashMap<String,String> parsepost(BufferedReader br) throws IOException
+	{
+		char[] buf=new char[100];
+		br.read(buf);
+		System.out.println(new String(buf));
+		String[] post=new String(buf).split("=|&");
+		HashMap<String,String> map=new HashMap<String,String>();
+		if(post.length%2==0)
+		{
+			for(int i=0;i<post.length/2;i++)
+			{
+				map.put(post[2*i],post[2*i+1]);
+			}
+		}
+		return map;
+	}
+
+	
 	private void processRequest() throws Exception
 	{
 		// Get a reference to the socket's input and output streams.
@@ -43,6 +213,7 @@ public final class HttpRequest  implements Runnable {
 		BufferedReader br =new BufferedReader(new InputStreamReader(is));
 		// Get the request line of the HTTP request message.
 		String requestLine = br.readLine();
+		
 		// Display the request line.
 		System.out.println();
 		System.out.println(requestLine);
@@ -50,68 +221,175 @@ public final class HttpRequest  implements Runnable {
 		// Get and display the header lines.
 		String headerLine = null;
 		while ((headerLine = br.readLine()).length() != 0) {
-//			System.out.println(headerLine);
+			//System.out.println(headerLine);
 		}
+	
 		// Extract the filename from the request line.
-		StringTokenizer tokens = new StringTokenizer(requestLine);
-		tokens.nextToken();  // skip over the method, which should be "GET"
-		String fileName = tokens.nextToken();
-		System.out.println("ddddd"+ fileName) ;
-		// Open the requested file.
-		
-		FileInputStream fis1 = null;
 		boolean fileExists = true;
 		Object respondobj = null;
+		StringTokenizer tokens = new StringTokenizer(requestLine);
+		boolean isPost=false;
+		if(tokens.nextToken().equals("POST"))
+		{
+			isPost=true;
+		}
+
+		// tokens.nextToken(); // skip over the method, which should be "GET"
+		String fileName = tokens.nextToken();
+		// Open the requested file.
+
+		FileInputStream fis1 = null;
+
 		try {
-			path= fileName.split("/");
-    		Number160 id=(Number160) pm.getdir(PeerManager.ROOT, path[1]);
-    		for (int i=2;i<path.length-1;i++)
-    		{
-    			id=(Number160)pm.getdir(id,path[i]);	
-    		}
-    		System.out.println(id) ;
-    		respondobj=pm.getdir(id, path[path.length-1]);
-    		System.out.println("111") ;
-		} catch(Exception e){
+			if (fileName.equals("/") || fileName.equals("/index")) {
+				
+				if(isPost)
+				{
+					HashMap<String,String>map=parsepost(br);
+					if(pm.MasterNode())
+					{
+						System.out.println(map.get("title"));
+						System.out.println(map.get("username"));
+						Number160 tid=Number160.createHash(rnd.nextLong());
+						pm.createdir(id_thread_data, tid, tid);
+						pm.putdir(id_threads, tid,new ThreadItem(map.get("title"),map.get("username")));
+						pm.putdir(tid, Number160.ZERO, new ReplyItem(map.get("content"),map.get("username"),new Date()));
+					}	
+					else
+					{
+						pm.mastercall(new PeerRequest(PeerRequest.REQ.POST_THREAD,null,map.get("title"),map.get("username"),map.get("content")));
+						System.out.println("POSTOK");
+					}
+				}
+				
+				
+				StringBuilder sb = new StringBuilder(
+						"<html><body><h1>Hello World</h1><br>This is our DHTWeb homepage<br><img src=../data/testjpeg /><br>");
+				for (Entry<Number640, Data> entry : pm.readdir(id_threads).m
+						.entrySet()) {
+					// System.out.print(entry.getKey().contentKey() + "--->");
+					Object obj = entry.getValue().object();
+					if (obj.getClass() == Number160.class)
+						continue;
+					ThreadItem itm=(ThreadItem)obj;
+					String title = itm.title;
+					String user = itm.user;
+					sb.append(String.format(
+							"<a href= ../threads/%s>%s |||| %s</a><br>\n", entry
+									.getKey().contentKey().toString(), title,user));
+				}
+				sb.append("<form action=\"index\" method=\"post\">  \n  <label>用户名:</label><input type=\"text\" name=\"username\"><br>\n  <label>标题:</label><input type=\"text\" name=\"title\">\n<br>内容:<br>\n<textarea cols=\"30\" rows=\"10\" name=\"content\"></textarea>\n <br>\n  <br>\n<input type=\"submit\" value=\"提交\">\n</form></body></html>");
+				respondobj = sb.toString();
+				// respondobj="<html><body><h1>Hello World</h1><br>This is our DHTWeb homepage<br><img src=../data/testjpeg /><a href=\"http://baidu.com\">Baidu</a></body></html>";
+			} else if(fileName.startsWith("/threads/"))
+			{
+				String id=fileName.substring(9);
+				System.out.println(id);
+				Number160 tid=new Number160(id);
+				
+				if(isPost)
+				{
+					HashMap<String,String>map=parsepost(br);
+					if(pm.MasterNode())
+					{
+						Number160 rid=Number160.createHash(rnd.nextLong());
+						pm.putdir(tid, rid, new ReplyItem(map.get("content"),map.get("username"),new Date()));
+					}	
+					else
+					{
+						pm.mastercall(new PeerRequest(PeerRequest.REQ.POST_REPLY,tid,map.get("content"),map.get("username"),null));
+						System.out.println("POSTOK");
+					}
+				}
+				
+				
+				StringBuilder sb = new StringBuilder(
+						"<html><body><h1>Hello World</h1><br>This is our DHTWeb homepage<br><img src=../data/testjpeg /><br>");
+
+				ThreadItem itm=(ThreadItem)pm.getdir(id_threads,tid );
+				String title = itm.title;
+				String user = itm.user;
+				
+				sb.append(String.format("<p>Title : %s  Post By %s</p><br>\n", title,user));
+				int i=0;
+				TreeMap<Date, ReplyItem> sortmap = new TreeMap<Date, ReplyItem>(
+						new Comparator<Date>() {
+							public int compare(Date obj1, Date obj2) {
+								return -obj2.compareTo(obj1);
+							}
+						});
+				for (Entry<Number640, Data> entry : pm.readdir(tid).m
+						.entrySet()) {
+					Object obj = entry.getValue().object();
+					if (obj.getClass() == Number160.class)
+						continue;
+					ReplyItem ritm=(ReplyItem)obj;
+					sortmap.put(ritm.date, ritm);
+				}
+				
+				for (Entry<Date, ReplyItem> entry : sortmap.entrySet()) 
+				{
+					i++;
+					ReplyItem ritm=entry.getValue();
+					sb.append(String.format(
+							"<p>==================</p><p>#%d:%s</p><br>User:%s Date:%s</p><br>\n",i, ritm.content,ritm.user,ritm.date.toString()));
+				}
+				sb.append(String.format("<form action=\"%s\" method=\"post\">  \n", id));
+				sb.append("  <label>用户名:</label><input type=\"text\" name=\"username\"><br>\n  内容:<br>\n<textarea cols=\"30\" rows=\"10\" name=\"content\"></textarea>\n <br>\n  <br>\n<input type=\"submit\" value=\"提交\">\n</form></body></html>");
+				respondobj = sb.toString();
+				
+			}
+			else
+			{
+				path = fileName.split("/");
+				Number160 id = (Number160) pm.getdir(PeerManager.ROOT, path[1]);
+				for (int i = 2; i < path.length - 1; i++) {
+					id = (Number160) pm.getdir(id, path[i]);
+				}
+				System.out.println(id);
+				respondobj = pm.getdir(id, path[path.length - 1]);
+				System.out.println("111");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
 			fileExists = false;
 		}
-		
+
 		// Construct the response message.
 		String statusLine = null;
 		String contentTypeLine = null;
 		String contentLengthLine = null;
 
 		if (fileExists) {
-			statusLine ="HTTP/1.0 200 OK" + CRLF;
-			contentTypeLine = "Content-Type: " + 
-				contentType( fileName ) + CRLF;
-//			entityBody = (String)pm.getdir(id, path[path.length-1]);
-//			contentLengthLine =Integer.toString(fis1.available())  + CRLF;
+			statusLine = "HTTP/1.0 200 OK" + CRLF;
+			contentTypeLine = "Content-Type: " + contentType(fileName) + CRLF;
+			// entityBody = (String)pm.getdir(id, path[path.length-1]);
+			// contentLengthLine =Integer.toString(fis1.available()) + CRLF;
 		} else {
 			statusLine = "file not found\n";
 			contentTypeLine = "no contents\n";
-			entityBody = "<HTML>" + 
-					"<HEAD><TITLE>Not Found</TITLE></HEAD>" +
-					"<BODY>Not Found</BODY></HTML>";
+			entityBody = "<HTML>" + "<HEAD><TITLE>Not Found</TITLE></HEAD>"
+					+ "<BODY>Not Found</BODY></HTML>";
 			contentLengthLine = new Integer(entityBody.length()).toString();
 			// Send the status line.
-			//os.writeBytes(statusLine);
+			// os.writeBytes(statusLine);
 
 			// Send the headers.
-			//os.writeBytes(contentTypeLine);
+			// os.writeBytes(contentTypeLine);
 
 			// Send a blank line to indicate the end of the header lines.
-			//os.writeBytes(CRLF);
+			// os.writeBytes(CRLF);
 		}
-			// Send the entity body.
-			if (fileExists)	{
-//				os.writeBytes(entityBody);
-				SendBytes2(respondobj, os);
-//				fis1.close();
-			} else {
-				os.writeBytes(entityBody);
-			}
-			
+		
+		// Send the entity body.
+		if (fileExists) {
+			// os.writeBytes(entityBody);
+			SendBytes2(respondobj, os);
+			// fis1.close();
+		} else {
+			os.writeBytes(entityBody);
+		}
+		
 		
 		os.close();
 		br.close();
