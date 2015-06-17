@@ -44,6 +44,7 @@ public class DHTWeb {
         	pm.createrootdir("img",Number160.createHash("DIR_IMG"));
         	pm.createdir(Number160.createHash("DIR_DATA"), "threads",Number160.createHash("THREADS"));
         	pm.createdir(Number160.createHash("DIR_DATA"), "thread_data",Number160.createHash("thread_data_data"));
+        	pm.createdir(Number160.createHash("DIR_DATA"), "pages",Number160.createHash("PAGES_DATA"));
             //pm.putdir(pm.dirid("data/testhtml"), "testhtml", "<html><body><h1>Hello World</h1><br>This is our DHTWeb homepage<br><img src=../data/testjpeg /></body></html>") ;
             InputStream fis = null;  
             fis = new FileInputStream(new File("LHDN.png"));  

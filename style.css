@@ -1,0 +1,100 @@
+body, div, h1, form, fieldset, input, textarea {
+	margin: 0; padding: 0; border: 0; outline: none;
+}
+
+html {
+	height: 100%;
+}
+
+body {
+	background: #728eaa;
+	background: -moz-linear-gradient(top, #25303C 0%, #728EAA 100%); /* firefox */	
+	background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#CCCCCC), color-stop(100%,#FFFFFF)); /* webkit */
+	font-family:Microsoft yahei, Song, Arial, Helvetica, Tahoma, Geneva,sans-serif;
+}
+
+
+#panel {
+	width: 800px; margin: 60px auto; padding: 60px 30px;
+	background: #dadada; border: 1px solid #e1e1e1;
+	-moz-box-shadow: 0px 0px 8px #444;
+	-webkit-box-shadow: 0px 0px 8px #444;
+}
+#bbscontent{
+	margin: 20px auto; width: 760px;
+	text-align: left; font-size: 16px; color: #445668; 
+	text-shadow: 0px 1px 0px #f2f2f2;
+}
+h1{margin-bottom:15px; height:100px; line-height:100px; text-align:center; font-size:24px; color:#fff; background:#0051a1;}
+
+label {
+
+	float: left;  margin: 11px 20px 0 0; width: 95px;
+	text-align: right; font-size: 16px; color: #445668; 
+	text-transform: uppercase; text-shadow: 0px 1px 0px #f2f2f2;
+}
+usrdiv{
+	 margin: 11px 20px 0 0; width: 95px;
+	text-align: left; font-size: 20px; color: #445668; 
+	text-shadow: 0px 1px 0px #f2f2f2;
+}
+timestamp{
+	float: right;  
+	text-align: right; font-size: 16px; color: #445668; 
+	text-shadow: 0px 1px 0px #f2f2f2;
+}
+
+a {
+	clear: left; margin: 11px 20px 0 0; width: 95px;
+	text-align: right; font-size: 16px; color: #445668; 
+	text-shadow: 0px 1px 0px #f2f2f2;
+}
+
+input {
+	width: 260px; height: 35px; padding: 5px 20px 0px 20px; margin: 0 20px 20px 0; 
+	background: #c3c3c3;
+	background: -moz-linear-gradient(top, #a0a0a0 0%, #c3c3c3 20%); /* firefox */
+	background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#a0a0a0), color-stop(20%,#c3c3c3)); /* webkit */
+	border-radius: 5px; -moz-border-radius: 5px; -webkit-border-radius: 5px;
+	-moz-box-shadow: 0px 1px 0px #f2f2f2;-webkit-box-shadow: 0px 1px 0px #f2f2f2;
+	font-family: sans-serif; font-size: 16px; color: #999999; text-shadow: 0px 1px 0px #eeeeee;
+}
+	input::-webkit-input-placeholder  {
+    	color: #999999; text-shadow: 0px 1px 0px #eeeeee;
+	}
+	input:-moz-placeholder {
+	    color: #999999;  text-shadow: 0px 1px 0px #eeeeee;
+	}
+
+textarea {
+	width: 748px; height: 170px; padding: 12px 20px 0px 20px; margin: 0 0 20px 0; 
+	background: #c3c3c3;
+	background: -moz-linear-gradient(top, #b8b8b8 0%, #c3c3c3 20%); /* firefox */
+	background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#b8b8b8), color-stop(20%,#c3c3c3)); /* webkit */
+	border-radius: 5px; -moz-border-radius: 5px; -webkit-border-radius: 5px;
+	-moz-box-shadow: 0px 1px 0px #f2f2f2;-webkit-box-shadow: 0px 1px 0px #f2f2f2;
+	font-family: sans-serif; font-size: 16px; color: #999999;text-shadow: 0px 1px 0px #eeeeee;
+}
+	textarea::-webkit-input-placeholder  {
+    	color: #999999;  text-shadow: 0px 1px 0px #eeeeee;
+	}
+	textarea:-moz-placeholder {
+	    color: #999999; text-shadow: 0px 1px 0px #eeeeee;
+	}
+	
+input:focus, textarea:focus {
+	background: #e8e8e8;
+	background: -moz-linear-gradient(top, #cccccc 0%, #e8e8e8 20%); /* firefox */
+	background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#cccccc), color-stop(20%,#e8e8e8)); /* webkit */
+	font-color: #eeeeee; 
+}
+
+input[type=submit] {
+	width: 185px; height: 52px; float: right; padding: 10px 15px; margin: 0 15px 0 0;
+	-moz-box-shadow: 0px 0px 5px #999;-webkit-box-shadow: 0px 0px 5px #999;
+	border: 1px solid #cccccc;
+	background: -moz-linear-gradient(top, #b8b8b8 0%, #aaaaaa 100%); /* firefox */
+	background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#b8b8b8), color-stop(100%,#aaaaaa)); /* webkit */
+	cursor: pointer;
+	font-family: sans-serif; font-size: 16px; color: #666666; 
+}

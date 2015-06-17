@@ -1,0 +1,15 @@
+</div>
+<div id="panel">
+
+	<form action="%s" method="post">
+		<fieldset>
+			<usrdiv for="name">发布回复:</usrdiv></br></br>
+			<input type="text" id="username" name="username" placeholder="请输入您的昵称">
+			<textarea id="content" name="content" placeholder="请输入帖子内容"></textarea>
+			<input type="submit" value="提交">
+		</fieldset>
+	</form>
+</div>
+
+
+</body></html>

@@ -33,6 +33,9 @@ public final class HttpRequest  implements Runnable {
 	static Number160 id_data;
 	static Number160 id_threads;//fix-me : should not be static( in case of multithread cases)
 	static Number160 id_thread_data;
+	static Number160 id_page_data;
+	static String main1,main2,page1,page2;
+	
 	
 	static Random rnd=new Random();
 	
@@ -165,6 +168,20 @@ public final class HttpRequest  implements Runnable {
 		if(id_data==null)		id_data=(Number160)pm.getdir(PeerManager.ROOT,"data");
 		if(id_thread_data==null)		id_thread_data=(Number160)pm.getdir(id_data,"thread_data");
 		if(id_threads==null)		id_threads=(Number160)pm.getdir(id_data, "threads");
+		if(id_page_data==null)		id_page_data=(Number160)pm.getdir(id_data, "pages");
+		
+		try
+		{
+			
+			if(main1==null)	main1=(String)pm.getdir(id_page_data, "main1");
+			if(main2==null)	main2=(String)pm.getdir(id_page_data, "main2");
+			if(page1==null)	page1=(String)pm.getdir(id_page_data, "page1");
+			if(page2==null)	page2=(String)pm.getdir(id_page_data, "page2");
+		}
+		catch(Exception e)
+		{
+			
+		}
 	}
 	public HttpRequest(Socket socket,PeerManager pm) throws Exception 
 	{
@@ -217,6 +234,7 @@ public final class HttpRequest  implements Runnable {
 		// Display the request line.
 		System.out.println();
 		System.out.println(requestLine);
+
 		
 		// Get and display the header lines.
 		String headerLine = null;
@@ -261,10 +279,9 @@ public final class HttpRequest  implements Runnable {
 						System.out.println("POSTOK");
 					}
 				}
+
 				
-				
-				StringBuilder sb = new StringBuilder(
-						"<html><body><h1>Hello World</h1><br>This is our DHTWeb homepage<br><img src=../data/testjpeg /><br>");
+				StringBuilder sb = new StringBuilder(main1);
 				for (Entry<Number640, Data> entry : pm.readdir(id_threads).m
 						.entrySet()) {
 					// System.out.print(entry.getKey().contentKey() + "--->");
@@ -275,11 +292,13 @@ public final class HttpRequest  implements Runnable {
 					String title = itm.title;
 					String user = itm.user;
 					sb.append(String.format(
-							"<a href= ../threads/%s>%s |||| %s</a><br>\n", entry
+							"<a href= ../threads/%s>%s</a><timestamp> %s</timestamp><br>\n", entry
 									.getKey().contentKey().toString(), title,user));
+				
 				}
-				sb.append("<form action=\"index\" method=\"post\">  \n  <label>用户名:</label><input type=\"text\" name=\"username\"><br>\n  <label>标题:</label><input type=\"text\" name=\"title\">\n<br>内容:<br>\n<textarea cols=\"30\" rows=\"10\" name=\"content\"></textarea>\n <br>\n  <br>\n<input type=\"submit\" value=\"提交\">\n</form></body></html>");
+				sb.append(main2);
 				respondobj = sb.toString();
+				System.out.println((String)respondobj);
 				// respondobj="<html><body><h1>Hello World</h1><br>This is our DHTWeb homepage<br><img src=../data/testjpeg /><a href=\"http://baidu.com\">Baidu</a></body></html>";
 			} else if(fileName.startsWith("/threads/"))
 			{
@@ -303,14 +322,13 @@ public final class HttpRequest  implements Runnable {
 				}
 				
 				
-				StringBuilder sb = new StringBuilder(
-						"<html><body><h1>Hello World</h1><br>This is our DHTWeb homepage<br><img src=../data/testjpeg /><br>");
+				StringBuilder sb = new StringBuilder(page1);
 
 				ThreadItem itm=(ThreadItem)pm.getdir(id_threads,tid );
 				String title = itm.title;
 				String user = itm.user;
 				
-				sb.append(String.format("<p>Title : %s  Post By %s</p><br>\n", title,user));
+				sb.append(String.format("<usrdiv> %s</usrdiv><timestamp> %s</timestamp><br><br>\n", title,user));
 				int i=0;
 				TreeMap<Date, ReplyItem> sortmap = new TreeMap<Date, ReplyItem>(
 						new Comparator<Date>() {
@@ -332,11 +350,11 @@ public final class HttpRequest  implements Runnable {
 					i++;
 					ReplyItem ritm=entry.getValue();
 					sb.append(String.format(
-							"<p>==================</p><p>#%d:%s</p><br>User:%s Date:%s</p><br>\n",i, ritm.content,ritm.user,ritm.date.toString()));
+							"<usrdiv>#%d:%s</usrdiv><timestamp> %s</timestamp><div id=\"bbscontent\">%s</div><br>\n",i,ritm.user,ritm.date.toString(), ritm.content));
 				}
-				sb.append(String.format("<form action=\"%s\" method=\"post\">  \n", id));
-				sb.append("  <label>用户名:</label><input type=\"text\" name=\"username\"><br>\n  内容:<br>\n<textarea cols=\"30\" rows=\"10\" name=\"content\"></textarea>\n <br>\n  <br>\n<input type=\"submit\" value=\"提交\">\n</form></body></html>");
+				sb.append(String.format(page2, id));
 				respondobj = sb.toString();
+				
 				
 			}
 			else
