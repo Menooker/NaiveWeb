@@ -444,6 +444,7 @@ public class PeerManager {
         isMasterNode= (masterKey!=null);
         isRootNode= (rootKey!=null);
         mKey=masterKey;
+        rKey=rootKey;
         Bindings b = new Bindings();
     	KeyPairGenerator gen = KeyPairGenerator.getInstance( "DSA" );
     	if(pw!=null)
@@ -451,7 +452,9 @@ public class PeerManager {
     	replylistener=lsr;
        	KeyPair pair1 = gen.generateKeyPair();
        	Number160 peer2Owner = Utils.makeSHAHash( pair1.getPublic().getEncoded() );
-       	PeerBuilderDHT builder= new PeerBuilderDHT(new PeerBuilder(pair1).bindings(b).ports(4000+rnd.nextInt()%10000).behindFirewall().start());
+       	int port=isMasterNode?0:rnd.nextInt()%10000;
+       		
+       	PeerBuilderDHT builder= new PeerBuilderDHT(new PeerBuilder(pair1).bindings(b).ports(4000+port).behindFirewall().start());
        	if(isMasterNode)
        	{
        		Number160 publick=Utils.makeSHAHash(mKey.getPublic().getEncoded());

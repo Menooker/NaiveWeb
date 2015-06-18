@@ -68,6 +68,7 @@ public class DHTWeb {
         }
         if(args[0].equals("-j"))
         {
+        	System.out.println(PeerManager.ReadKey("master_"));
         	pm=new PeerManager(args[1],PeerManager.ReadKey("master_"),
         			PeerManager.ReadKey("root_"),args[2],listener);     	
         }     
