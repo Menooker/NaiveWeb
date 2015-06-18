@@ -183,6 +183,27 @@ public final class HttpRequest  implements Runnable {
 			
 		}
 	}
+	
+	
+	static void init_fs(PeerManager pm) throws InvalidKeyException, SignatureException, IOException, NotMasterNodeException, ClassNotFoundException
+	{
+		Number160 id_page=Number160.createHash("PAGES_DATA");
+		Number160 id_data=Number160.createHash("DIR_DATA");
+		Number160 id_css=Number160.createHash("CSS_DATA");
+    	pm.createrootdir("data",Number160.createHash("DIR_DATA"));
+    	pm.createrootdir("img",Number160.createHash("DIR_IMG"));
+    	pm.createdir(id_data, "threads",Number160.createHash("THREADS"));
+    	pm.createdir(id_data, "thread_data",Number160.createHash("thread_data_data"));
+    	pm.createdir(id_data, "pages",id_page);
+    	pm.createdir(id_data, "css",id_css);
+    	//pm.putdir(pm.dirid("data/testhtml"), "testhtml", "<html><body><h1>Hello World</h1><br>This is our DHTWeb homepage<br><img src=../data/testjpeg /></body></html>") ;
+        pm.putfile(id_page, "main1", "main1.txt");
+        pm.putfile(id_page, "main2", "main2.txt");
+        pm.putfile(id_page, "page1", "page1.txt");
+        pm.putfile(id_page, "page2", "page2.txt");
+        pm.putfile(id_css, "style.css", "style.css");
+	}
+	
 	public HttpRequest(Socket socket,PeerManager pm) throws Exception 
 	{
 		this.socket = socket;

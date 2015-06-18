@@ -4,6 +4,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintStream;
 import java.io.Serializable;
 import java.net.Inet4Address;
@@ -1073,10 +1074,57 @@ public class PeerManager {
 		return ret;
 	}
 	
+	/**
+	 * Returns if I am a master.
+	 * @return
+	 */
 	public boolean MasterNode()
 	{
 		return isMasterNode;
 	}
+	
+	/**
+	 * Put a file from disk into DHT 
+	 * @param dir
+	 * The directory id
+	 * @param name
+	 * The file name, in string
+	 * @param path
+	 * The path to an existing disk file to be put
+	 * @return
+	 * @throws IOException
+	 * @throws InvalidKeyException
+	 * @throws SignatureException
+	 * @throws NotMasterNodeException
+	 */
+	public boolean putfile(Number160 dir,String name,String path) throws IOException, InvalidKeyException, SignatureException, NotMasterNodeException
+	{
+		return putfile(dir,Number160.createHash(name),path);
+	}
+	
+	/**
+	 * Put a file from disk into DHT 
+	 * @param dir
+	 * The directory id
+	 * @param name
+	 * The file name
+	 * @param path
+	 * The path to an existing disk file to be put
+	 * @return
+	 * @throws IOException
+	 * @throws InvalidKeyException
+	 * @throws SignatureException
+	 * @throws NotMasterNodeException
+	 */
+	public boolean putfile(Number160 dir,Number160 name,String path) throws IOException, InvalidKeyException, SignatureException, NotMasterNodeException
+	{
+    	InputStream fis = null;  
+        fis = new FileInputStream(new File(path));  
+        byte[] buff = new byte[fis.available()];  
+        fis.read(buff);
+        fis.close();
+        return putdir(dir, name, buff) ;
+   	}
 	
 	private Object docall(PeerAddress pa,Object o) throws ClassNotFoundException, IOException, SendFailException 
 	{
