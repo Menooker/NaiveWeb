@@ -103,15 +103,24 @@ public class PeerManager {
 		
 	}
 		
-	
+	public static class KeyReply implements Serializable
+	{
+
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = -7699614895862776493L;
+		PublicKey m;
+		PublicKey r;
+		
+	}
 
 	final static int KEY_LENGTH=443;
-	static byte[] CreateMyKeys(PublicKey master, PublicKey root) {
-		byte[] m = master.getEncoded();//fix-me : can perform better
-		byte[] r= root.getEncoded();
-		byte[] ret = Arrays.copyOf(m, m.length + r.length);
-		System.arraycopy(r, 0, ret, m.length, r.length);
-		return ret;
+	static KeyReply CreateMyKeys(PublicKey master, PublicKey root) {
+		KeyReply r=new KeyReply();
+		r.m=master;
+		r.r=root;
+		return r;
 	}
 	
 	static PublicKey DecodePublicKey(byte[] buf,int pos) throws NoSuchAlgorithmException, InvalidKeySpecException
@@ -131,9 +140,10 @@ public class PeerManager {
 	class ServerReply implements ObjectDataReply {
 		@Override
 		public Object reply(PeerAddress sender, Object request) throws Exception {
-			
 			if(request.equals("Hello"))
+			{
 				return CreateMyKeys(mKey.getPublic(),rKey.getPublic());
+			}
 			else if(replylistener!=null)
 				return replylistener.reply(sender, request);
 			else
@@ -470,9 +480,9 @@ public class PeerManager {
 			FutureDirect fd=pr.sendDirect(remote).object("Hello").start().awaitUninterruptibly();
 			if(fd.isSuccess())
 			{
-				byte[] kys=(byte[])fd.object();
-				mKey= new KeyPair(DecodePublicKey(kys,0),null);
-				rKey= new KeyPair(DecodePublicKey(kys,1),null);
+				KeyReply kys=(KeyReply)fd.object();
+				mKey= new KeyPair(kys.m,null);
+				rKey= new KeyPair(kys.r,null);
 			}
 			else
 			{
@@ -658,12 +668,12 @@ public class PeerManager {
     		throw e;
     	}
     	FuturePut p;
-
-		p = peer.put(parent).data(dirname,(new Data(dir).protectEntryNow(k,factory).sign(k.getPrivate()))).keyPair(k).sign().domainKey(Number160.ZERO).start();
+    	k.getPublic().getEncoded();
+		p = peer.put(parent).data(dirname,(new Data(dir).protectEntryNow(k,factory).sign(k))).keyPair(k).sign().domainKey(Number160.ZERO).start();
 	    p.awaitUninterruptibly();
 	    if(!p.isSuccess())
 	    	return false;
-		p = peer.put(dir).data(Number160.ZERO,(new Data(DIR_MAGIC).protectEntryNow(k,factory).sign(k.getPrivate()))).keyPair(k).sign().domainKey(Number160.ZERO).start();
+		p = peer.put(dir).data(Number160.ZERO,(new Data(DIR_MAGIC).protectEntryNow(k,factory).sign(k))).keyPair(k).sign().domainKey(Number160.ZERO).start();
 	    p.awaitUninterruptibly();	  
 	    return p.isSuccess();
     }
@@ -1058,6 +1068,11 @@ public class PeerManager {
 			return ret;				
 		}
 		return ret;
+	}
+	
+	public boolean MasterNode()
+	{
+		return isMasterNode;
 	}
 	
 	private Object docall(PeerAddress pa,Object o) throws ClassNotFoundException, IOException, SendFailException 

@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<!-- saved from url=(0063)http://line25.com/wp-content/uploads/2011/form/demo/index.html# -->
+<html><head><meta http-equiv="Content-Type" content="text/html;>
+<meta charset="utf-8">
+<title>CSS3 Contact Form</title>
+
+<link href="../../data/css/style.css" rel="stylesheet" type="text/css" media="screen">
+</head>
+
+<body>
+	<h1>¼ÆËã»úÍøÂç²âÊÔÂÛÌ³</h1>
+<div id="panel">
