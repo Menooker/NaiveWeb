@@ -276,7 +276,6 @@ public final class HttpRequest  implements Runnable {
 					else
 					{
 						pm.mastercall(new PeerRequest(PeerRequest.REQ.POST_THREAD,null,map.get("title"),map.get("username"),map.get("content")));
-						System.out.println("POSTOK");
 					}
 				}
 
@@ -298,7 +297,6 @@ public final class HttpRequest  implements Runnable {
 				}
 				sb.append(main2);
 				respondobj = sb.toString();
-				System.out.println((String)respondobj);
 				// respondobj="<html><body><h1>Hello World</h1><br>This is our DHTWeb homepage<br><img src=../data/testjpeg /><a href=\"http://baidu.com\">Baidu</a></body></html>";
 			} else if(fileName.startsWith("/threads/"))
 			{
@@ -317,7 +315,6 @@ public final class HttpRequest  implements Runnable {
 					else
 					{
 						pm.mastercall(new PeerRequest(PeerRequest.REQ.POST_REPLY,tid,map.get("content"),map.get("username"),null));
-						System.out.println("POSTOK");
 					}
 				}
 				

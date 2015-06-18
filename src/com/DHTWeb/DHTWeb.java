@@ -103,7 +103,7 @@ public class DHTWeb {
             }     	
         }   
     	
-        
+        Runtime.getRuntime().exit(0);
     }
 
 
