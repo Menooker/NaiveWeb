@@ -62,6 +62,7 @@ import net.tomp2p.peers.Number160;
 import net.tomp2p.peers.Number640;
 import net.tomp2p.peers.PeerAddress;
 import net.tomp2p.relay.tcp.TCPRelayClientConfig;
+import net.tomp2p.replication.IndirectReplication;
 import net.tomp2p.storage.Data;
 import net.tomp2p.utils.Utils;
 import java.io.File;
@@ -101,6 +102,7 @@ public class PeerManager {
 	KeyEvaluationScheme rootevaluationScheme;
 	Random rand=new Random();
 	ObjectDataReply replylistener;
+	IndirectReplication rep;
 	
 	PeerAddress lastmaster;
 	PeerAddress lastroot;
@@ -368,7 +370,8 @@ public class PeerManager {
         masterevaluationScheme=new KeyEvaluationScheme(mKey.getPublic(),factory);
         rootevaluationScheme=new KeyEvaluationScheme(rKey.getPublic(),factory);
         System.out.println(pr.peerAddress());
-       	
+        rep=new IndirectReplication(peer).start();
+        
        	putdir(ROOT_PEERS,peer.peerID(),peer.peerAddress(),rKey);
        	putdir(MASTER_PEERS,peer.peerID(),peer.peerAddress());    
     }
@@ -407,7 +410,8 @@ public class PeerManager {
         }
         masterevaluationScheme=new KeyEvaluationScheme(mKey.getPublic(),factory);
         rootevaluationScheme=new KeyEvaluationScheme(rKey.getPublic(),factory);
-       	
+        rep=new IndirectReplication(peer).start();
+        
        	putdir(ROOT_PEERS,peer.peerID(),peer.peerAddress(),rKey);
        	putdir(MASTER_PEERS,peer.peerID(),peer.peerAddress());  
     }
@@ -561,6 +565,7 @@ public class PeerManager {
 				System.out.println(fd.failedReason());
 				throw new Exception("Error getting keys");
 			}
+			rep=new IndirectReplication(peer).start();
        		//mKey=ReadPublicKey("master_");
        	}
 		if(rKey==null)

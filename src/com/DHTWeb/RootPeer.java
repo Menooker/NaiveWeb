@@ -44,6 +44,8 @@ import net.tomp2p.p2p.PeerBuilder;
 import net.tomp2p.peers.Number160;
 import net.tomp2p.peers.Number640;
 import net.tomp2p.peers.PeerAddress;
+import net.tomp2p.replication.IndirectReplication;
+import net.tomp2p.replication.Replication;
 import net.tomp2p.rpc.RPC;
 import net.tomp2p.storage.Data;
 import net.tomp2p.utils.Utils;
@@ -63,6 +65,7 @@ public class RootPeer {
 	KeyPair rKey;
 	Key rLockKey;
 	PeerDHT rpeer;
+	IndirectReplication rep;
 	PeerManager pm;
 	final Random rnd = new Random( 42L );
 	
@@ -213,6 +216,7 @@ public class RootPeer {
 	
 	public void exit()
 	{
+		rep.shutdown();
 		rpeer.shutdown().awaitListenersUninterruptibly();
 	}
 	
@@ -243,6 +247,7 @@ public class RootPeer {
             rpeer.peer().discover().peerAddress(fb.bootstrapTo().iterator().next()).start().awaitUninterruptibly();
         }
         System.out.println("Root private node started, "+pr.peerAddress());	
+        rep=new IndirectReplication(rpeer).start();
 	}
 	
 	public RootPeer(String host,DSASignatureFactory factory,KeyPair rKey,Key rLockKey,PeerManager pm) throws NoSuchAlgorithmException, IOException
@@ -270,6 +275,7 @@ public class RootPeer {
 
 		System.out.println("PeerAddress: " + pa);
 		PeerManager.bootstrap2(rpeer,pa);	
+		rep=new IndirectReplication(rpeer).start();
 	}
 
 }
