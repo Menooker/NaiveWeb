@@ -121,21 +121,13 @@ public class FileSystemShell {
 				}
 				else if (argss[0].equals("putaddr")) {
 					path = argss[1].split("/");
-					Number160 id = (Number160) pm.getdir(PeerManager.ROOT,
-							path[0]);
-					for (int i = 1; i < path.length - 1; i++) {
-						id = (Number160) pm.getdir(id, path[i]);
-					}
-					pm.lockputdir(id, path[path.length - 1], pm.peer().peerAddress());
+					
+					Number160 id = Number160.createHash(path[0]);
+					System.out.println(pm.rootputdir(id, path[1], pm.peer().peerAddress()));
 				} else if (argss[0].equals("getaddr")) {
 					path = argss[1].split("/");
-					Number160 id = (Number160) pm.getdir(PeerManager.ROOT,
-							path[0]);
-					for (int i = 1; i < path.length - 1; i++) {
-						id = (Number160) pm.getdir(id, path[i]);
-					}
-
-					System.out.println((PeerAddress)pm.lockgetdir(id,path[path.length - 1]));
+					Number160 id = Number160.createHash(path[0]);
+					System.out.println((PeerAddress)pm.rootgetdir(id,path[1]));
 				} 
 				else if (argss[0].equals("exit")) {
 					break;
@@ -145,7 +137,7 @@ public class FileSystemShell {
 				}
 				else if (argss[0].equals("rsend")) {
 					pm.rootcall("HI");
-				}				
+				}						
 				else if(argss[0].equals("puttxt"))
 				{
 					File file=new File(argss[2]);
