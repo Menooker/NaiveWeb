@@ -257,7 +257,7 @@ public class RootPeer {
     	KeyPairGenerator gen = KeyPairGenerator.getInstance( "DSA" );
        	KeyPair pair1 = gen.generateKeyPair();
        	Number160 publick=Utils.makeSHAHash(rKey.getPublic().getEncoded());
-       	Peer pr=new PeerBuilder(pair1).bindings(b).ports(4005+rnd.nextInt()%1000).behindFirewall().start();//fix-me : remove test random!!!
+       	Peer pr=new PeerBuilder(pair1).bindings(b).ports(4005).behindFirewall().start();
        	pr.objectDataReply(pm.newServerReply());
        	PeerBuilderDHT builder= new PeerBuilderDHT(pr);
        	
