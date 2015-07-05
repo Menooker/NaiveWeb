@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NavigableMap;
 import java.util.Random;
 import java.util.Map.Entry;
 
@@ -173,6 +174,25 @@ public class PeerManager {
 		}
 	}
 		
+	public static class PeerStorageLayer extends StorageLayer{
+		public PeerStorageLayer(Storage backend) {
+			super(backend);
+			// TODO Auto-generated constructor stub
+		}
+
+		@Override
+		public Map<Number640, Enum<?>> putAll(final NavigableMap<Number640, Data> dataMap, PublicKey publicKey, boolean putIfAbsent,
+		        boolean domainProtection, boolean sendSelf) {
+			final Map<Number640, Enum<?>> retVal = new HashMap<Number640, Enum<?>>();
+			for(Map.Entry<Number640, Data> entry: dataMap.entrySet())
+			{
+				retVal.put(entry.getKey(), PutStatus.FAILED);
+			}
+			return retVal;
+		}
+
+		
+	}
 	public static class MyStorage extends PeerFileStorage {
 		
 		public MyStorage(DB db, Number160 peerId, File path,
@@ -513,6 +533,8 @@ public class PeerManager {
     	
         isMasterNode= (masterKey!=null);
         isRootNode= (rootKey!=null);
+        if(isRootNode && !isMasterNode)
+        	throw new NotMasterNodeException();
         mKey=masterKey;
         rKey=rootKey;
         Bindings b = new Bindings();
@@ -534,7 +556,12 @@ public class PeerManager {
        		builder.peer().objectDataReply(new ServerReply());
        		builder.storage(make_storage(publick));
        	}
-
+       	else
+       	{
+       		System.out.println("Client Mode");
+       		builder.storage(new StorageMemory());
+       		builder.storageLayer(new PeerStorageLayer(builder.storage()));
+       	}
 
        	peer=builder.start();
     	System.out.println("My public key is "+peer2Owner);
@@ -856,7 +883,7 @@ public class PeerManager {
     		NotMasterNodeException e=new NotMasterNodeException();
     		throw e;
     	}
-		FuturePut p = peer.put(parent).data(dirname,(new Data(d).protectEntryNow(k,factory).sign(k.getPrivate()))).keyPair(k).sign().domainKey(Number160.ZERO).start();
+		FuturePut p = peer.put(parent).data(dirname,(new Data(d).protectEntryNow(k,factory).sign(k.getPrivate()))).domainKey(Number160.ZERO).start();
 	    p.awaitUninterruptibly();   
 	    return p.isSuccess();
     }
