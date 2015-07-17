@@ -36,7 +36,7 @@ public class DHTWeb {
     	
     	pm= null;
         if (args[0].equals("-n")) { //-s name ip key
-        	pm=new PeerManager(args[1],listener);
+        	pm=new PeerManager(args[1],listener,Integer.parseInt(args[2]));
         	PeerManager.WriteKey(pm.getMasterKey(), "master_");
         	PeerManager.WriteKey(pm.getRootKey(), "root_");
       

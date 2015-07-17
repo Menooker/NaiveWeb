@@ -12,6 +12,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.NavigableMap;
 import java.util.Random;
@@ -67,7 +68,7 @@ public class RootPeer {
 	PeerDHT rpeer;
 	IndirectReplication rep;
 	PeerManager pm;
-	final Random rnd = new Random( 42L );
+	final Random rnd = new Random( (new Date()).getTime() );
 	
 	class RootStorageRPC extends StorageRPC
 	{

@@ -23,11 +23,13 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Random;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import net.tomp2p.connection.Bindings;
 import net.tomp2p.connection.ConnectionBean;
@@ -37,6 +39,7 @@ import net.tomp2p.connection.PeerConnection;
 import net.tomp2p.connection.Responder;
 import net.tomp2p.connection.SignatureFactory;
 import net.tomp2p.dht.EvaluatingSchemeDHT;
+import net.tomp2p.dht.FutureDigest;
 import net.tomp2p.dht.FutureGet;
 import net.tomp2p.dht.FuturePut;
 import net.tomp2p.dht.FutureRemove;
@@ -47,6 +50,7 @@ import net.tomp2p.dht.StorageLayer.ProtectionEnable;
 import net.tomp2p.dht.StorageLayer.ProtectionMode;
 import net.tomp2p.dht.StorageMemory;
 import net.tomp2p.dht.StorageRPC;
+import net.tomp2p.futures.BaseFutureListener;
 import net.tomp2p.futures.FutureBootstrap;
 import net.tomp2p.futures.FutureDirect;
 import net.tomp2p.futures.FutureDiscover;
@@ -75,17 +79,19 @@ import net.tomp2p.connection.DSASignatureFactory;
 import net.tomp2p.peers.Number160;
 import net.tomp2p.storage.StorageDisk;
 import net.tomp2p.dht.Storage;
+import net.tomp2p.rpc.DigestResult;
 import net.tomp2p.rpc.ObjectDataReply;
 import net.tomp2p.rpc.RPC;
 
 public class PeerManager {
 	
-	final Random rnd = new Random( 42L );
+	final Random rnd = new Random( (new Date()).getTime() );
 	static final ProtectionEnable PROTECT=ProtectionEnable.ALL;
 	static final ProtectionMode PROTECTMODE=ProtectionMode.MASTER_PUBLIC_KEY;
 	public static final Number160 ROOT=Number160.createHash(10086);
 	public static final Number160 ROOT_PEERS=Number160.createHash(54749110);
 	public static final Number160 MASTER_PEERS=Number160.createHash("MASTER_PEERS_HASH");
+	public static final Number160 MAX_BLOCK_ID=Number160.createHash(2);
 	
 	public static final Number160 DIR_MAGIC=Number160.ONE;	
 
@@ -108,15 +114,11 @@ public class PeerManager {
 	PeerAddress lastmaster;
 	PeerAddress lastroot;
 	
-	public class NotMasterNodeException extends Exception
-	{
-		
-	}
-	public class SendFailException extends Exception
-	{
-		
-	}
-		
+	private int MAX_BLOCK=0;
+	
+	public class NotMasterNodeException extends Exception{}
+	public class SendFailException extends Exception{}
+	public class DataCorruptException extends Exception{}	
 	
 	public static class KeyReply implements Serializable
 	{
@@ -393,7 +395,10 @@ public class PeerManager {
         rep=new IndirectReplication(peer).start();
         
        	putdir(ROOT_PEERS,peer.peerID(),peer.peerAddress(),rKey);
-       	putdir(MASTER_PEERS,peer.peerID(),peer.peerAddress());    
+       	putdir(MASTER_PEERS,peer.peerID(),peer.peerAddress());   
+       	Integer mb=(Integer)getdir(ROOT,MAX_BLOCK_ID);
+       	MAX_BLOCK=mb;
+       	System.out.println("MAX_BLOCK = "+MAX_BLOCK);
     }
 	
 	/**
@@ -402,7 +407,7 @@ public class PeerManager {
 	 * @param lsr
 	 * @throws Exception
 	 */
-    public PeerManager(String pw,ObjectDataReply lsr) throws Exception {
+    public PeerManager(String pw,ObjectDataReply lsr,int maxblock) throws Exception {
     	isMasterNode=true;
     	isRootNode=true;
         KeyPairGenerator gen = KeyPairGenerator.getInstance( "DSA" );
@@ -411,6 +416,7 @@ public class PeerManager {
         rKey = gen.generateKeyPair();
         rLockKey=MyCipher.toKey(pw);
         replylistener=lsr;
+        MAX_BLOCK=maxblock;
         
     	rootpeer=new RootPeer(factory,rKey,rLockKey,this);
         
@@ -434,6 +440,8 @@ public class PeerManager {
         
        	putdir(ROOT_PEERS,peer.peerID(),peer.peerAddress(),rKey);
        	putdir(MASTER_PEERS,peer.peerID(),peer.peerAddress());  
+       	putdir(ROOT,MAX_BLOCK_ID,new Integer(MAX_BLOCK),rKey);
+       	System.out.println("MAX_BLOCK = "+MAX_BLOCK);
     }
     
     /**
@@ -560,7 +568,7 @@ public class PeerManager {
        	{
        		System.out.println("Client Mode");
        		builder.storage(new StorageMemory());
-       		builder.storageLayer(new PeerStorageLayer(builder.storage()));
+       		//builder.storageLayer(new PeerStorageLayer(builder.storage())); //fix-me : should it be used?
        	}
 
        	peer=builder.start();
@@ -605,10 +613,151 @@ public class PeerManager {
        	}
        	if(isMasterNode)
        		putdir(MASTER_PEERS,peer.peerID(),peer.peerAddress());  
+       	Integer mb=(Integer)getdir(ROOT,MAX_BLOCK_ID);
+       	MAX_BLOCK=mb;
+       	System.out.println("MAX_BLOCK = "+MAX_BLOCK);
     }
     
     
+    static class LargeDataHead implements Serializable
+    {
+
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = 5837642652194789775L;
+    	int cnt;
+    	int len;
+    	byte[] md5hash;
+    	LargeDataHead(byte[] data,long maxblock)
+    	{
+    		len=data.length;
+    		md5hash=Utils.makeMD5Hash(data);
+    		cnt=(int) ((data.length / maxblock) + (data.length % maxblock==0?0:1))+1;
+    	}
+    	
+    }
     
+    /**
+     * Put a big data into DHT, protected by master key
+     * @param name
+     * @param d
+     * @param key
+     * @return
+     * @throws Exception
+     */
+    public boolean putdirbig(Number160 name,Object d)throws Exception
+    {
+    	return putdirbig(name,d,mKey);
+    }
+    
+    /**
+     * Put a big data into DHT
+     * @param name
+     * @param d
+     * @param key
+     * @return
+     * @throws Exception
+     */
+    public boolean putdirbig(Number160 name,Object d,KeyPair key)throws Exception
+    {
+    	if(!isMasterNode)
+    		throw new NotMasterNodeException();
+		byte[] buf=Utils.encodeJavaObject(d);
+		
+		LargeDataHead head=new LargeDataHead(buf,MAX_BLOCK);
+		FuturePut[] puts=new FuturePut[head.cnt];
+		puts[0] = peer.put(name).data(Number160.ZERO,(new Data(head).protectEntryNow(key,factory).sign(key.getPrivate()))).keyPair(key).domainKey(Number160.ZERO).start();
+	    byte[] tosend=new byte[MAX_BLOCK];
+	    DummyCryptObj sobj=new DummyCryptObj();
+	    sobj.by=tosend;
+	    int i;
+		for(i=1;i<head.cnt-1;i++)
+	    {	
+	    	System.arraycopy(buf, (i-1)*MAX_BLOCK, tosend, 0, MAX_BLOCK);
+	    	puts[i] = peer.put(name).data(new Number160(i),(new Data(sobj).protectEntryNow(key,factory).sign(key.getPrivate()))).keyPair(key).domainKey(Number160.ZERO).start();
+	    }
+		int lastpac=buf.length-(i-1)*MAX_BLOCK;
+		tosend=new byte[lastpac];
+		sobj.by=tosend;
+		System.arraycopy(buf, (i-1)*MAX_BLOCK, tosend, 0, lastpac);
+		puts[i]= peer.put(name).data(new Number160(i),(new Data(sobj).protectEntryNow(key,factory).sign(key.getPrivate()))).keyPair(key).domainKey(Number160.ZERO).start();
+		
+	    for(i=0;i<head.cnt;i++)
+	    {
+	    	puts[i].awaitUninterruptibly();
+	    	if(!puts[i].isSuccess())
+	    		return false;
+	    }
+	    return true;
+    }
+    
+    /**
+     * Get the big object in the dir name, protected by master key.
+     * @param parent
+     * @param name
+     * @param d
+     * @return
+     * @throws IOException 
+     * @throws ClassNotFoundException 
+     * @throws DataCorruptException 
+     * @throws Exception
+     */
+    public Object getdirbig(Number160 name) throws ClassNotFoundException, IOException, DataCorruptException
+    {
+    	return getdirbig(name,mKey);
+    }
+    
+    void print(byte[] buf)
+    {
+    	for(int i=0;i<buf.length;i++)
+    	{
+    		System.out.print(buf[i]+",");
+    	}
+    	System.out.println();
+    }
+    
+    /**
+     * Get the big object in the dir name, protected by key.
+     * @param parent
+     * @param name
+     * @param d
+     * @return
+     * @throws IOException 
+     * @throws ClassNotFoundException 
+     * @throws DataCorruptException 
+     * @throws Exception
+     */
+    public Object getdirbig(Number160 name,KeyPair key) throws ClassNotFoundException, IOException, DataCorruptException
+    {
+		FutureGet futureGet = peer.get(name).domainKey(Number160.ZERO).all().start();
+		futureGet.awaitUninterruptibly();
+		if (futureGet.isSuccess()) {
+			Map<Number640,Data> map=null;
+			if(key==mKey)
+			{
+				map=getmap(futureGet,masterevaluationScheme);
+			}
+			else if(key==rKey)
+			{
+				map=getmap(futureGet,rootevaluationScheme);
+			}
+			DataMapReader mapper=new DataMapReader(name,Number160.ZERO,map);
+			LargeDataHead head=(LargeDataHead)mapper.get(Number160.ZERO).object();
+			byte[] buf=new byte[head.len];
+			for(int i=1;i<head.cnt;i++)
+			{
+				DummyCryptObj sobj=(DummyCryptObj)mapper.get(new Number160(i)).object();
+				byte[] slice=sobj.by;
+				System.arraycopy(slice, 0, buf, (i-1)*MAX_BLOCK, Math.min(MAX_BLOCK,slice.length));
+			}
+			if(Arrays.equals(head.md5hash, Utils.makeMD5Hash(buf)))
+				return Utils.decodeJavaObject(buf, 0, head.len);
+			else
+				throw new DataCorruptException();
+		}
+		return null;
+    }
     
     
     /**
@@ -1238,6 +1387,17 @@ public class PeerManager {
 		}
 		throw new SendFailException();
 		
+	}
+	
+	
+	public  Map<PeerAddress,Map<Number640,Data>>  digest(Number160 dir)
+	{
+		FutureGet futureGet = peer.get(dir).domainKey(Number160.ZERO).all().start();
+		futureGet.awaitUninterruptibly();
+		if (futureGet.isSuccess()) {
+			return futureGet.rawData();
+		}
+		return null; 	
 	}
 	
 	@Override

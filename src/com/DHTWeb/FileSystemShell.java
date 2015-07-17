@@ -8,11 +8,15 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.security.Key;
+import java.util.Collection;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import net.tomp2p.peers.Number160;
 import net.tomp2p.peers.Number640;
 import net.tomp2p.peers.PeerAddress;
+import net.tomp2p.rpc.DigestResult;
 import net.tomp2p.storage.Data;
 import net.tomp2p.utils.Utils;
 
@@ -101,7 +105,28 @@ public class FileSystemShell {
 						id = (Number160) pm.getdir(id, path[i]);
 					}
 					pm.deldirfile(id, path[path.length - 1]);
-				} else if (argss[0].equals("put")) {
+				}else if (argss[0].equals("digest")) {
+					path = argss[1].split("/");
+					Number160 id = (Number160) pm.getdir(PeerManager.ROOT,
+							path[0]);
+					for (int i = 1; i < path.length ; i++) {
+						id = (Number160) pm.getdir(id, path[i]);
+					}
+					Map<PeerAddress,Map<Number640,Data>> dmap= pm.digest(id);	
+					if(dmap!=null)
+					{
+						for (Entry<PeerAddress,Map<Number640,Data>> e :dmap.entrySet())
+						{
+							System.out.println(e.getKey());
+							System.out.println("Cnt:"+e.getValue().size());
+							for(Entry<Number640, Data> etr : e.getValue().entrySet())
+							{
+								System.out.println("\t"+etr.getKey());
+							}
+							System.out.println();
+						}
+					}
+				}else if (argss[0].equals("put")) {
 					path = argss[1].split("/");
 					Number160 id = (Number160) pm.getdir(PeerManager.ROOT,
 							path[0]);
@@ -192,6 +217,48 @@ public class FileSystemShell {
 						id = (Number160) pm.getdir(id, path[i]);
 					}					
 					System.out.println(pm.putdir(id, path[path.length - 1], filecontent));				
+				}
+				else if(argss[0].equals("putbin2"))
+				{
+					File file=new File(argss[2]);
+					Long filelength = file.length(); // 获取文件长度
+					byte[] filecontent = new byte[filelength.intValue()];
+					try {
+						FileInputStream in = new FileInputStream(file);
+						in.read(filecontent);
+						in.close();
+
+					} catch (FileNotFoundException e) {
+
+						e.printStackTrace();
+
+					} catch (IOException e) {
+
+						e.printStackTrace();
+
+					}
+					System.out.println(Utils.makeSHAHash(filecontent));
+					path = argss[1].split("/");
+					Number160 id = (Number160) pm.getdir(PeerManager.ROOT,
+							path[0]);
+					for (int i = 1; i < path.length; i++) {
+						id = (Number160) pm.getdir(id, path[i]);
+					}					
+					System.out.println(pm.putdirbig(id, filecontent));				
+				}
+				else if(argss[0].equals("sha2"))
+				{
+					path = argss[1].split("/");
+					Number160 id = (Number160) pm.getdir(PeerManager.ROOT,
+							path[0]);
+					for (int i = 1; i < path.length; i++) {
+						id = (Number160) pm.getdir(id, path[i]);
+					}	
+					System.out.println(Utils.makeSHAHash((byte[])pm.getdirbig(id)));
+				}
+				else
+				{
+					System.out.println("Unknown command");
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
