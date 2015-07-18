@@ -52,6 +52,7 @@ public class DHTWeb {
             fis.read(buff);
             pm.putdir(pm.dirid("data/testjpeg"), "testjpeg", buff) ;
             fis.close();
+            HttpRequest.init_fs(pm);
         }
         if (args[0].equals("-c")) {
         	pm=new PeerManager(args[1],1);

@@ -197,10 +197,10 @@ public final class HttpRequest  implements Runnable {
     	pm.createdir(id_data, "pages",id_page);
     	pm.createdir(id_data, "css",id_css);
     	//pm.putdir(pm.dirid("data/testhtml"), "testhtml", "<html><body><h1>Hello World</h1><br>This is our DHTWeb homepage<br><img src=../data/testjpeg /></body></html>") ;
-        pm.putfile(id_page, "main1", "main1.txt");
-        pm.putfile(id_page, "main2", "main2.txt");
-        pm.putfile(id_page, "page1", "page1.txt");
-        pm.putfile(id_page, "page2", "page2.txt");
+        pm.putdirtxt(id_page, "main1", "main1.txt");
+        pm.putdirtxt(id_page, "main2", "main2.txt");
+        pm.putdirtxt(id_page, "page1", "page1.txt");
+        pm.putdirtxt(id_page, "page2", "page2.txt");
         pm.putfile(id_css, "style.css", "style.css");
 	}
 	

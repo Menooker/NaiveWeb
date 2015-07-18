@@ -1271,6 +1271,58 @@ public class PeerManager {
     }
     
     
+    /**
+     * Put a text file in DHT (into a String)
+     * @param dir
+     * @param filename
+     * @param path
+     * @return
+     * @throws InvalidKeyException
+     * @throws SignatureException
+     * @throws IOException
+     * @throws NotMasterNodeException
+     */   
+    public boolean putdirtxt(Number160 dir,String filename,String path) throws InvalidKeyException, SignatureException, IOException, NotMasterNodeException
+    {
+    	return putdirtxt(dir,Number160.createHash(filename),path);
+    }
+    
+    /**
+     * Put a text file in DHT (into a String)
+     * @param dir
+     * @param filename
+     * @param path
+     * @return
+     * @throws InvalidKeyException
+     * @throws SignatureException
+     * @throws IOException
+     * @throws NotMasterNodeException
+     */
+    public boolean putdirtxt(Number160 dir,Number160 filename,String path) throws InvalidKeyException, SignatureException, IOException, NotMasterNodeException
+    {
+		File file=new File(path);
+		Long filelength = file.length(); // 获取文件长度
+		byte[] filecontent = new byte[filelength.intValue()];
+		FileInputStream in = new FileInputStream(file);
+		try {
+			in.read(filecontent);
+			return putdir(dir, filename, new String(filecontent));
+		} catch (FileNotFoundException e) {
+
+			e.printStackTrace();
+
+		} catch (IOException e) {
+
+			e.printStackTrace();
+
+		}
+		finally
+		{
+			in.close();
+		}
+		return false;
+    }
+    
 	/**
 	 * Get an object directly at index "name"
 	 * @param name
