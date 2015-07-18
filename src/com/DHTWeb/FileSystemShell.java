@@ -246,6 +246,16 @@ public class FileSystemShell {
 					}					
 					System.out.println(pm.putdirbig(id, filecontent));				
 				}
+				else if(argss[0].equals("del2"))
+				{
+					path = argss[1].split("/");
+					Number160 id = (Number160) pm.getdir(PeerManager.ROOT,
+							path[0]);
+					for (int i = 1; i < path.length; i++) {
+						id = (Number160) pm.getdir(id, path[i]);
+					}		
+					System.out.println(pm.delfilebig(id));
+				}
 				else if(argss[0].equals("sha2"))
 				{
 					path = argss[1].split("/");

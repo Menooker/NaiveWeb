@@ -30,6 +30,7 @@ import java.util.NavigableMap;
 import java.util.Random;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeMap;
 
 import net.tomp2p.connection.Bindings;
 import net.tomp2p.connection.ConnectionBean;
@@ -628,61 +629,82 @@ public class PeerManager {
 		private static final long serialVersionUID = 5837642652194789775L;
     	int cnt;
     	int len;
-    	byte[] md5hash;
+    	//byte[] md5hash;//fix-me : we removed md5 checking for performance
     	LargeDataHead(byte[] data,long maxblock)
     	{
     		len=data.length;
-    		md5hash=Utils.makeMD5Hash(data);
+    		//md5hash=Utils.makeMD5Hash(data);
     		cnt=(int) ((data.length / maxblock) + (data.length % maxblock==0?0:1))+1;
     	}
     	
     }
     
     /**
-     * Put a big data into DHT, protected by master key
+     * Put a big data into DHT, protected by master key. Note that the big file should be deleted by delfilebig.
      * @param name
      * @param d
      * @param key
      * @return
-     * @throws Exception
+     * @throws NotMasterNodeException 
+     * @throws IOException 
+     * @throws SignatureException 
+     * @throws InvalidKeyException 
      */
-    public boolean putdirbig(Number160 name,Object d)throws Exception
+    public boolean putdirbig(Number160 name,Object d) throws InvalidKeyException, SignatureException, IOException, NotMasterNodeException
     {
     	return putdirbig(name,d,mKey);
     }
     
     /**
-     * Put a big data into DHT
+     * Put a big data into DHT. Note that the big file should be deleted by delfilebig.
      * @param name
      * @param d
      * @param key
      * @return
-     * @throws Exception
+     * @throws IOException 
+     * @throws NotMasterNodeException 
+     * @throws SignatureException 
+     * @throws InvalidKeyException 
      */
-    public boolean putdirbig(Number160 name,Object d,KeyPair key)throws Exception
+    public boolean putdirbig(Number160 name,Object d,KeyPair key) throws IOException, NotMasterNodeException, InvalidKeyException, SignatureException
     {
     	if(!isMasterNode)
     		throw new NotMasterNodeException();
 		byte[] buf=Utils.encodeJavaObject(d);
+		byte[] conkey=new byte[20];
 		
 		LargeDataHead head=new LargeDataHead(buf,MAX_BLOCK);
 		FuturePut[] puts=new FuturePut[head.cnt];
-		puts[0] = peer.put(name).data(Number160.ZERO,(new Data(head).protectEntryNow(key,factory).sign(key.getPrivate()))).keyPair(key).domainKey(Number160.ZERO).start();
+		TreeMap<Number160,Data> datamap=new TreeMap<Number160,Data> ();
+		
 	    byte[] tosend=new byte[MAX_BLOCK];
 	    DummyCryptObj sobj=new DummyCryptObj();
 	    sobj.by=tosend;
 	    int i;
 		for(i=1;i<head.cnt-1;i++)
 	    {	
-	    	System.arraycopy(buf, (i-1)*MAX_BLOCK, tosend, 0, MAX_BLOCK);
-	    	puts[i] = peer.put(name).data(new Number160(i),(new Data(sobj).protectEntryNow(key,factory).sign(key.getPrivate()))).keyPair(key).domainKey(Number160.ZERO).start();
+			//put in the index directory
+			rnd.nextBytes(conkey);
+			Number160 ckey=new Number160(conkey);
+			datamap.put(new Number160(i), new Data(ckey).protectEntryNow(key,factory).sign(key.getPrivate()));    	
+	    	//put the data
+			System.arraycopy(buf, (i-1)*MAX_BLOCK, tosend, 0, MAX_BLOCK);
+	    	puts[i] = this.myput(ckey, Number160.ZERO, sobj, key);
 	    }
+		////////////special case for the last package
 		int lastpac=buf.length-(i-1)*MAX_BLOCK;
 		tosend=new byte[lastpac];
 		sobj.by=tosend;
+		//put in the index directory
+		rnd.nextBytes(conkey);
+		Number160 ckey=new Number160(conkey);
+		datamap.put(new Number160(i), new Data(ckey).protectEntryNow(key,factory).sign(key.getPrivate()));    	
 		System.arraycopy(buf, (i-1)*MAX_BLOCK, tosend, 0, lastpac);
-		puts[i]= peer.put(name).data(new Number160(i),(new Data(sobj).protectEntryNow(key,factory).sign(key.getPrivate()))).keyPair(key).domainKey(Number160.ZERO).start();
+		puts[i]= this.myput(ckey, Number160.ZERO, sobj, key);
+		////////////last package process ends
 		
+		datamap.put(Number160.ZERO, new Data(head).protectEntryNow(key,factory).sign(key.getPrivate()));
+		puts[0]=peer.put(name).dataMapContent(datamap).domainKey(Number160.ZERO).start();
 	    for(i=0;i<head.cnt;i++)
 	    {
 	    	puts[i].awaitUninterruptibly();
@@ -693,7 +715,7 @@ public class PeerManager {
     }
     
     /**
-     * Get the big object in the dir name, protected by master key.
+     * Get the big object in the dir name, protected by master key. Note that the big file should be deleted by delfilebig.
      * @param parent
      * @param name
      * @param d
@@ -717,8 +739,87 @@ public class PeerManager {
     	System.out.println();
     }
     
+  
     /**
-     * Get the big object in the dir name, protected by key.
+     * Delete the big object in the dir name, protected by master key.
+     * @param parent
+     * @param name
+     * @param d
+     * @return
+     * @throws IOException 
+     * @throws ClassNotFoundException 
+     * @throws DataCorruptException 
+     * @throws Exception
+     */
+    public boolean delfilebig(Number160 name) throws ClassNotFoundException, IOException, DataCorruptException
+    {
+    	return delfilebig(name,mKey);
+    }
+    
+    /**
+     * Delete the big object in the dir name, protected by key.
+     * @param parent
+     * @param name
+     * @param d
+     * @return
+     * @throws IOException 
+     * @throws ClassNotFoundException 
+     * @throws DataCorruptException 
+     * @throws Exception
+     */
+    public boolean delfilebig(Number160 name,KeyPair key) throws ClassNotFoundException, IOException, DataCorruptException
+    {
+    	boolean ret=true;
+		FutureGet futureGet = peer.get(name).domainKey(Number160.ZERO).all().start();
+		futureGet.awaitUninterruptibly();
+		if (futureGet.isSuccess()) {
+			KeyEvaluationScheme es=masterevaluationScheme;
+			Map<Number640,Data> map=null;
+			if(key==mKey)
+			{
+				es=masterevaluationScheme;
+			}
+			else if(key==rKey)
+			{
+				es=rootevaluationScheme;
+			}
+			else
+			{
+				throw new IOException("There is no valid key");
+			}
+			map=getmap(futureGet,es);
+			DataMapReader mapper=new DataMapReader(name,Number160.ZERO,map);
+			LargeDataHead head=(LargeDataHead)mapper.get(Number160.ZERO).object();
+			FutureRemove p = peer.remove(name).keyPair(key).sign().keyPair(key).domainKey(Number160.ZERO).start();
+			
+			//remove all the data
+			FutureRemove[] rms=new FutureRemove[head.cnt-1];
+			for(int i=1;i<head.cnt;i++)
+			{
+				rms[i-1]=peer.remove((Number160)mapper.get(new Number160(i)).object()).domainKey(Number160.ZERO)
+						.domainKey(Number160.ZERO).contentKey(Number160.ZERO)
+						.keyPair(key).sign().keyPair(key).start();
+			}
+			
+			
+			for(int i=0;i<rms.length;i++)
+			{
+				rms[i].awaitUninterruptibly();
+				if(!rms[i].isSuccess())
+					ret=false;
+			}	
+			p.awaitUninterruptibly();
+			if(!p.isSuccess())
+				ret=false;
+
+			return ret;
+		}
+		return false;
+    }
+    
+    
+    /**
+     * Get the big object in the dir name, protected by key. Note that the big file should be deleted by delfilebig.
      * @param parent
      * @param name
      * @param d
@@ -733,28 +834,51 @@ public class PeerManager {
 		FutureGet futureGet = peer.get(name).domainKey(Number160.ZERO).all().start();
 		futureGet.awaitUninterruptibly();
 		if (futureGet.isSuccess()) {
+			KeyEvaluationScheme es=masterevaluationScheme;
 			Map<Number640,Data> map=null;
 			if(key==mKey)
 			{
-				map=getmap(futureGet,masterevaluationScheme);
+				es=masterevaluationScheme;
 			}
 			else if(key==rKey)
 			{
-				map=getmap(futureGet,rootevaluationScheme);
+				es=rootevaluationScheme;
 			}
+			else
+			{
+				throw new IOException("There is no valid key");
+			}
+			map=getmap(futureGet,es);
 			DataMapReader mapper=new DataMapReader(name,Number160.ZERO,map);
 			LargeDataHead head=(LargeDataHead)mapper.get(Number160.ZERO).object();
-			byte[] buf=new byte[head.len];
+			
+			//get all the data
+			FutureGet[] gets=new FutureGet[head.cnt-1];
 			for(int i=1;i<head.cnt;i++)
 			{
-				DummyCryptObj sobj=(DummyCryptObj)mapper.get(new Number160(i)).object();
-				byte[] slice=sobj.by;
-				System.arraycopy(slice, 0, buf, (i-1)*MAX_BLOCK, Math.min(MAX_BLOCK,slice.length));
+				gets[i-1]=myget((Number160)mapper.get(new Number160(i)).object(),Number160.ZERO);
 			}
-			if(Arrays.equals(head.md5hash, Utils.makeMD5Hash(buf)))
+			
+			//wait and combine the data
+			byte[] buf=new byte[head.len];
+
+			for(int i=0;i<gets.length;i++)
+			{
+				gets[i].awaitUninterruptibly();
+				if(!gets[i].isSuccess())
+					return null;
+				DummyCryptObj sobj=(DummyCryptObj)getdata(gets[i],es).object();
+				//DummyCryptObj sobj=(DummyCryptObj)gets[i].data().object();
+				byte[] slice=sobj.by;
+				System.arraycopy(slice, 0, buf, i*MAX_BLOCK, Math.min(MAX_BLOCK,slice.length));
+			}	
+			
+
+			/*if(Arrays.equals(head.md5hash, Utils.makeMD5Hash(buf)))
 				return Utils.decodeJavaObject(buf, 0, head.len);
 			else
-				throw new DataCorruptException();
+				throw new DataCorruptException();*/ //fix-me : we removed md5 checking for performance
+			return Utils.decodeJavaObject(buf, 0, head.len);
 		}
 		return null;
     }
@@ -947,6 +1071,12 @@ public class PeerManager {
     	return getdir(parent,Number160.createHash(name));
     }
     
+    
+    private FutureGet myget(Number160 parent,Number160 name)
+    {
+    	 return peer.get(parent).domainKey(Number160.ZERO).contentKey(name).start();
+    }
+    
     /**
      * Get a specified content (a directory or an object) in a directory
      * @param parent
@@ -958,7 +1088,7 @@ public class PeerManager {
      * @throws IOException
      */
 	public Object getdir(Number160 parent,Number160 name) throws ClassNotFoundException, IOException {
-		FutureGet futureGet = peer.get(parent).domainKey(Number160.ZERO).contentKey(name).start();
+		FutureGet futureGet = myget(parent, name);
 		futureGet.awaitUninterruptibly();
 		if (futureGet.isSuccess()) {
 			if(parent.equals(ROOT) || parent.equals(ROOT_PEERS))
@@ -1032,11 +1162,16 @@ public class PeerManager {
     		NotMasterNodeException e=new NotMasterNodeException();
     		throw e;
     	}
-		FuturePut p = peer.put(parent).data(dirname,(new Data(d).protectEntryNow(k,factory).sign(k.getPrivate()))).domainKey(Number160.ZERO).start();
+		FuturePut p = this.myput(parent, dirname, d, k);
 	    p.awaitUninterruptibly();   
 	    return p.isSuccess();
     }
  
+    private FuturePut myput(Number160 parent,Number160 dirname,Object d,KeyPair k) throws InvalidKeyException, SignatureException, IOException
+    {
+		return peer.put(parent).data(dirname,(new Data(d).protectEntryNow(k,factory).sign(k.getPrivate()))).sign().keyPair(k).domainKey(Number160.ZERO).start();
+    }
+    
     
     /**
      * Delete an entry in the directory
@@ -1353,6 +1488,32 @@ public class PeerManager {
 	{
 		return putfile(dir,Number160.createHash(name),path);
 	}
+	
+	/**
+	 * Put a large file from disk into DHT 
+	 * @param dir
+	 * The directory id
+	 * @param name
+	 * The file name
+	 * @param path
+	 * The path to an existing disk file to be put
+	 * @return
+	 * @throws NotMasterNodeException 
+	 * @throws IOException 
+	 * @throws SignatureException 
+	 * @throws InvalidKeyException 
+	 * @throws Exception 
+	 */
+	public boolean putfilebig(Number160 dir,String path) throws InvalidKeyException, SignatureException, IOException, NotMasterNodeException
+	{
+    	InputStream fis = null;  
+        fis = new FileInputStream(new File(path));  
+        byte[] buff = new byte[fis.available()];  
+        fis.read(buff);
+        fis.close();
+        return putdirbig(dir, buff) ;
+   	}
+	
 	
 	/**
 	 * Put a file from disk into DHT 
