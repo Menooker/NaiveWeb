@@ -1496,6 +1496,7 @@ public class PeerManager {
 	 */
 	public void exit() {
 		System.out.println("Exiting...");
+		cacheclearthread.stop();
 		try {
 			if (isRootNode) {
 				deldirfile(ROOT_PEERS, peer.peerID(), rKey);
