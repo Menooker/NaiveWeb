@@ -21,10 +21,13 @@ import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Random;
@@ -111,6 +114,8 @@ public class PeerManager {
 	Random rand=new Random();
 	ObjectDataReply replylistener;
 	IndirectReplication rep;
+	HashMap<Number640,Integer> GetCache=new HashMap<Number640,Integer>();
+	
 	
 	PeerAddress lastmaster;
 	PeerAddress lastroot;
@@ -133,7 +138,43 @@ public class PeerManager {
 		
 	}
 
-
+	Thread cacheclearthread=new Thread(){
+		@Override
+		public void run()
+		{
+			for(;;)
+			{
+				try {
+					Thread.sleep(30000);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				synchronized(GetCache)
+				{
+					LinkedList<Number640> delList = new LinkedList<Number640>();
+					for(Entry<Number640,Integer>e:GetCache.entrySet())
+					{
+						Integer newv=e.getValue()-1;
+						if(newv==0)
+						{
+							delList.add(e.getKey());
+							PublicKey key=peer.storageLayer().get(e.getKey()).publicKey();
+							peer.storageLayer().remove(e.getKey(), key , false);
+						}
+						else
+						{
+							GetCache.put(e.getKey(), newv);
+						}
+					}
+					for(Number640 id:delList)
+					{
+						GetCache.remove(id);
+					}
+				}
+			}
+		}
+	};
 	
 	
 	final static int KEY_LENGTH=443;
@@ -601,13 +642,14 @@ public class PeerManager {
 				System.out.println(fd.failedReason());
 				throw new Exception("Error getting keys");
 			}
-			rep=new IndirectReplication(peer).start();
+			cacheclearthread.start();
        		//mKey=ReadPublicKey("master_");
        	}
 		if(rKey==null)
 			rKey=PeerManager.ReadPublicKey("root_");
        	masterevaluationScheme=new KeyEvaluationScheme(mKey.getPublic(),factory);
        	rootevaluationScheme=new KeyEvaluationScheme(rKey.getPublic(),factory);
+       	rep=new IndirectReplication(peer).start();
        	if(isRootNode)
        	{
        		putdir(ROOT_PEERS,peer.peerID(),peer.peerAddress(),rKey);
@@ -790,7 +832,7 @@ public class PeerManager {
 			map=getmap(futureGet,es);
 			DataMapReader mapper=new DataMapReader(name,Number160.ZERO,map);
 			LargeDataHead head=(LargeDataHead)mapper.get(Number160.ZERO).object();
-			FutureRemove p = peer.remove(name).keyPair(key).sign().keyPair(key).domainKey(Number160.ZERO).start();
+			FutureRemove p = peer.remove(name).all().sign().keyPair(key).domainKey(Number160.ZERO).start();
 			
 			//remove all the data
 			FutureRemove[] rms=new FutureRemove[head.cnt-1];
@@ -798,7 +840,7 @@ public class PeerManager {
 			{
 				rms[i-1]=peer.remove((Number160)mapper.get(new Number160(i)).object()).domainKey(Number160.ZERO)
 						.domainKey(Number160.ZERO).contentKey(Number160.ZERO)
-						.keyPair(key).sign().keyPair(key).start();
+						.keyPair(key).sign().start();
 			}
 			
 			
@@ -934,7 +976,7 @@ public class PeerManager {
 		FutureGet futureGet = rootpeer.rpeer.get(parent).domainKey(Number160.ZERO).contentKey(name).start();
 		futureGet.awaitUninterruptibly();
 		if (futureGet.isSuccess()) {
-			DummyCryptObj buf=(DummyCryptObj)getdata(futureGet,rootevaluationScheme).object();
+			DummyCryptObj buf=(DummyCryptObj)getdata(futureGet,rootevaluationScheme,false).object();
 			return MyCipher.decryptobj(buf.by, rLockKey);
 		}
 		return null;
@@ -1169,6 +1211,11 @@ public class PeerManager {
  
     private FuturePut myput(Number160 parent,Number160 dirname,Object d,KeyPair k) throws InvalidKeyException, SignatureException, IOException
     {
+    	if(!isMasterNode){
+    		synchronized(GetCache){
+    			GetCache.remove(new Number640(parent,Number160.ZERO,dirname,Number160.ZERO));
+    		}
+    	}
 		return peer.put(parent).data(dirname,(new Data(d).protectEntryNow(k,factory).sign(k.getPrivate()))).sign().keyPair(k).domainKey(Number160.ZERO).start();
     }
     
@@ -1253,15 +1300,38 @@ public class PeerManager {
 		return null;
 	}
 	
-	
-	
-	private static Map<Number640, Data> getmap(FutureGet futureGet,EvaluatingSchemeDHT evaluationScheme)
+	private Map<Number640, Data> getmap(FutureGet futureGet,KeyEvaluationScheme evaluationScheme)
 	{
-		return evaluate(evaluationScheme,futureGet.rawData());
+		return getmap(futureGet,evaluationScheme,true);
 	}
 	
-    private static Data getdata(FutureGet futureGet,EvaluatingSchemeDHT evaluationScheme) {
-    	Map<Number640, Data> dataMap= getmap(futureGet,evaluationScheme);
+	private Map<Number640, Data> getmap(FutureGet futureGet,KeyEvaluationScheme evaluationScheme,boolean shouldcache)
+	{
+		Map<Number640, Data> ret= evaluate(evaluationScheme,futureGet.rawData());
+		NavigableMap<Number640,Data> map=(NavigableMap<Number640,Data>)ret;
+		if(shouldcache)
+		{
+			peer.storageLayer().putAll(map, evaluationScheme.key , false , true , true);
+			if(!isMasterNode)
+			{
+				synchronized(GetCache)
+				{
+					for(Entry<Number640, Data>e:ret.entrySet())
+					{
+						GetCache.put(e.getKey(), new Integer(6));
+					}
+				}
+			}
+		}
+		return ret;
+	}
+	
+	private Data getdata(FutureGet futureGet,KeyEvaluationScheme evaluationScheme) {
+		return this.getdata(futureGet, evaluationScheme,true);
+	}
+	
+    private Data getdata(FutureGet futureGet,KeyEvaluationScheme evaluationScheme,boolean shouldcache) {
+    	Map<Number640, Data> dataMap= getmap(futureGet,evaluationScheme,shouldcache);
         if (dataMap.size() == 0) {
             return null;
         }

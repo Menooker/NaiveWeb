@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.Map.Entry;
+import java.util.TreeMap;
 
 import net.tomp2p.connection.SignatureFactory;
 import net.tomp2p.dht.EvaluatingSchemeDHT;
@@ -53,7 +54,7 @@ public class KeyEvaluationScheme implements EvaluatingSchemeDHT {
 
     @Override
     public Map<Number640, Data> evaluate2(Map<PeerAddress, Map<Number640, Data>> rawKeys) {
-        Map<Number640, Data> result = new HashMap<Number640, Data>();
+        Map<Number640, Data> result = new TreeMap<Number640, Data>();
         for (Map<Number640, Data> tmp : rawKeys.values())
         {
         	for(Entry<Number640, Data> entry : tmp.entrySet())

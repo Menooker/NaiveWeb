@@ -251,10 +251,13 @@ public class FileSystemShell {
 					path = argss[1].split("/");
 					Number160 id = (Number160) pm.getdir(PeerManager.ROOT,
 							path[0]);
-					for (int i = 1; i < path.length; i++) {
+					int i;
+					for (i = 1; i < path.length-1; i++) {
 						id = (Number160) pm.getdir(id, path[i]);
 					}		
-					System.out.println(pm.delfilebig(id));
+					Number160 id2=(Number160) pm.getdir(id, path[i]);
+					System.out.println(pm.deldirfile(id, path[i]));
+					System.out.println(pm.delfilebig(id2));
 				}
 				else if(argss[0].equals("sha2"))
 				{
