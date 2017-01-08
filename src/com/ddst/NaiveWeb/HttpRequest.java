@@ -1,4 +1,4 @@
-package com.DHTWeb;
+package com.ddst.NaiveWeb;
 
 
 import java.io.* ;
@@ -14,7 +14,7 @@ import java.util.StringTokenizer;
 import java.util.Map.Entry;
 import java.util.TreeMap;
 
-import com.DHTWeb.PeerManager.NotMasterNodeException;
+import com.ddst.NaiveWeb.PeerManager.NotMasterNodeException;
 
 import net.tomp2p.peers.Number160;
 import net.tomp2p.peers.Number640;
@@ -197,11 +197,11 @@ public final class HttpRequest  implements Runnable {
     	pm.createdir(id_data, "pages",id_page);
     	pm.createdir(id_data, "css",id_css);
     	//pm.putdir(pm.dirid("data/testhtml"), "testhtml", "<html><body><h1>Hello World</h1><br>This is our DHTWeb homepage<br><img src=../data/testjpeg /></body></html>") ;
-        pm.putdirtxt(id_page, "main1", "main1.txt");
-        pm.putdirtxt(id_page, "main2", "main2.txt");
-        pm.putdirtxt(id_page, "page1", "page1.txt");
-        pm.putdirtxt(id_page, "page2", "page2.txt");
-        pm.putfile(id_css, "style.css", "style.css");
+        pm.putdirtxt(id_page, "main1", "../webdata/main1.txt");
+        pm.putdirtxt(id_page, "main2", "../webdata/main2.txt");
+        pm.putdirtxt(id_page, "page1", "../webdata/page1.txt");
+        pm.putdirtxt(id_page, "page2", "../webdata/page2.txt");
+        pm.putfile(id_css, "style.css", "../webdata/style.css");
 	}
 	
 	public HttpRequest(Socket socket,PeerManager pm) throws Exception 
@@ -251,7 +251,8 @@ public final class HttpRequest  implements Runnable {
 		BufferedReader br =new BufferedReader(new InputStreamReader(is));
 		// Get the request line of the HTTP request message.
 		String requestLine = br.readLine();
-		
+		String contentTypeLine = null;
+		String contentLengthLine = null;
 		// Display the request line.
 		System.out.println();
 		System.out.println(requestLine);
@@ -318,6 +319,7 @@ public final class HttpRequest  implements Runnable {
 				}
 				sb.append(main2);
 				respondobj = sb.toString();
+				contentTypeLine = "Content-Type: HTML"+ CRLF;
 				// respondobj="<html><body><h1>Hello World</h1><br>This is our DHTWeb homepage<br><img src=../data/testjpeg /><a href=\"http://baidu.com\">Baidu</a></body></html>";
 			} else if(fileName.startsWith("/threads/"))
 			{
@@ -373,7 +375,7 @@ public final class HttpRequest  implements Runnable {
 				sb.append(String.format(page2, id));
 				respondobj = sb.toString();
 				
-				
+				contentTypeLine = "Content-Type: HTML"+ CRLF;
 			}
 			else
 			{
@@ -384,6 +386,7 @@ public final class HttpRequest  implements Runnable {
 				}
 				System.out.println(id);
 				respondobj = pm.getdir(id, path[path.length - 1]);
+				contentTypeLine = "Content-Type: " + contentType(fileName) + CRLF;
 				System.out.println("111");
 			}
 		} catch (Exception e) {
@@ -393,12 +396,10 @@ public final class HttpRequest  implements Runnable {
 
 		// Construct the response message.
 		String statusLine = null;
-		String contentTypeLine = null;
-		String contentLengthLine = null;
+
 
 		if (fileExists) {
 			statusLine = "HTTP/1.0 200 OK" + CRLF;
-			contentTypeLine = "Content-Type: " + contentType(fileName) + CRLF;
 			// entityBody = (String)pm.getdir(id, path[path.length-1]);
 			// contentLengthLine =Integer.toString(fis1.available()) + CRLF;
 		} else {
@@ -416,7 +417,14 @@ public final class HttpRequest  implements Runnable {
 			// Send a blank line to indicate the end of the header lines.
 			// os.writeBytes(CRLF);
 		}
-		
+		// Send the status line.
+		os.writeBytes(statusLine);
+
+		// Send the headers.
+		os.writeBytes(contentTypeLine);
+
+		// Send a blank line to indicate the end of the header lines.
+		os.writeBytes(CRLF);	
 		// Send the entity body.
 		if (fileExists) {
 			// os.writeBytes(entityBody);
@@ -479,6 +487,11 @@ public final class HttpRequest  implements Runnable {
 		{
 			return "image/jpeg";
 		}
+		if(fileName.endsWith(".css")|| fileName.endsWith(".CSS"))
+		{
+			return "text/css";
+		}
+		
 		return "application/octet-stream";
 	}
 }

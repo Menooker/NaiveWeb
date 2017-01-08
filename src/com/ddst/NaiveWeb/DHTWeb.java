@@ -1,4 +1,4 @@
-package com.DHTWeb;
+package com.ddst.NaiveWeb;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -6,7 +6,7 @@ import java.io.InputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-import com.DHTWeb.HttpRequest.ReplyListener;
+import com.ddst.NaiveWeb.HttpRequest.ReplyListener;
 
 import net.tomp2p.peers.Number160;
 import net.tomp2p.peers.PeerAddress;
@@ -47,7 +47,7 @@ public class DHTWeb {
         	pm.createdir(Number160.createHash("DIR_DATA"), "pages",Number160.createHash("PAGES_DATA"));
             //pm.putdir(pm.dirid("data/testhtml"), "testhtml", "<html><body><h1>Hello World</h1><br>This is our DHTWeb homepage<br><img src=../data/testjpeg /></body></html>") ;
             InputStream fis = null;  
-            fis = new FileInputStream(new File("LHDN.png"));  
+            fis = new FileInputStream(new File("../webdata/LHDN.png"));  
             byte[] buff = new byte[fis.available()];  
             fis.read(buff);
             pm.putdir(pm.dirid("data/testjpeg"), "testjpeg", buff) ;

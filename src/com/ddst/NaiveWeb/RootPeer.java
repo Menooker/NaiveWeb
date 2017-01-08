@@ -1,4 +1,4 @@
-package com.DHTWeb;
+package com.ddst.NaiveWeb;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -18,7 +18,8 @@ import java.util.NavigableMap;
 import java.util.Random;
 import java.util.TreeMap;
 
-import com.DHTWeb.PeerManager.ServerReply;
+import com.ddst.NaiveWeb.PeerManager.ServerReply;
+
 import net.tomp2p.connection.RequestHandler;
 import net.tomp2p.connection.Bindings;
 import net.tomp2p.connection.ChannelCreator;
